@@ -1,0 +1,4 @@
+- Files in text/ are preprocessed by `rake consume` and serialized
+- e.g. text/foo.tweets becomes consumed/foo.corpus
+- `rake consume` looks at hashes to know which it needs to update
+- Preprocessed corpus files are loaded at runtime by Corpus.load('foo')

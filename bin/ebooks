@@ -1,0 +1,100 @@
+#!/usr/bin/env ruby
+
+require 'twitter_ebooks'
+
+module Ebooks
+  APP_PATH = Dir.pwd # XXX do some recursive thing instead
+
+  def self.new(target)
+    usage = "Usage: ebooks new <reponame>"
+
+    if target.nil?
+      log usage
+      exit
+    end
+
+    target = "./#{reponame}"
+
+    if File.exists?(target)
+      log "#{target} already exists. Please remove if you want to recreate."
+      exit
+    end
+
+    FileUtils.cp_r(SKELETON_PATH, target) 
+
+    File.open(File.join(target, 'bots.rb'), 'w') do |f|
+      template = File.read(File.join(SKELETON_PATH, 'bots.rb'))
+      f.write(template.gsub("{{BOT_NAME}}", reponame))
+    end
+
+    log "New twitter_ebooks app created at #{target}"
+  end
+
+  def self.consume(pathes)
+    pathes.each do |path|
+      filename = File.basename(path)
+      shortname = filename.split('.')[0..-2].join('.')
+      hash = Digest::MD5.hexdigest(File.read(path))
+
+      log "Consuming text corpus: #{filename}"
+      outpath = File.join(APP_PATH, 'model', "#{shortname}.model")
+      Model.consume(path).save(outpath)
+      log "Corpus consumed"
+    end
+  end
+
+  def self.gen(model_path, input)
+    model = Model.load(model_path)
+    if input && !input.empty?
+      puts "@cmd " + model.markov_response(input, 135)
+    else
+      puts model.markov_statement
+    end
+  end
+
+  def self.score(model_path, input)
+    model = Model.load(model_path)
+    model.score_interest(input)
+  end
+
+  def self.archive(username, outpath)
+    Archiver.new(username, outpath).fetch_tweets
+  end
+
+  def self.tweet(modelpath, username)
+    load File.join(APP_PATH, 'bots.rb')
+    model = Model.load(modelpath)
+    statement = model.markov_statement
+    log "@#{username}: #{statement}"
+    bot = Bot.get(username)
+    bot.configure
+    bot.tweet(statement)
+  end
+
+  def self.command(args)
+    usage = """Usage: 
+     ebooks new <reponame>
+     ebooks consume <corpus_path> [...]
+     ebooks gen <model_path> [input]
+     ebooks score <model_path> <input>
+     ebooks archive <@user> <outpath>
+     ebooks tweet <model_path> <@bot>
+"""
+
+    if args.length == 0
+      log usage
+      exit
+    end
+
+    case args[0]
+    when "new" then new(args[1])
+    when "consume" then consume(args[1..-1])
+    when "gen" then gen(args[1], args[2..-1].join(' '))
+    when "score" then score(args[1], args[2..-1].join(' '))
+    when "archive" then archive(args[1], args[2])
+    when "tweet" then tweet(args[1], args[2])
+    end
+  end
+end
+
+Ebooks.command(ARGV)
