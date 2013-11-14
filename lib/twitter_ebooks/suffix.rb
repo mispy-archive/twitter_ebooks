@@ -1,4 +1,8 @@
 module Ebooks
+  # This generator uses data identical to the markov model, but
+  # instead of making a chain by looking up bigrams it uses the
+  # positions to randomly replace suffixes in one sentence with
+  # matching suffixes in another
   class SuffixGenerator
     def self.build(sentences)
       SuffixGenerator.new(sentences)
@@ -48,6 +52,7 @@ module Ebooks
           break if next_token.nil?
           
           alternatives = (n == :unigrams) ? @unigrams[next_token] : @bigrams[token][next_token]
+          # Filter out suffixes from previous sentences
           alternatives.reject! { |a| a[1] == INTERIM || used.include?(a[0]) }
           varsites[i] = alternatives unless alternatives.empty?
         end
@@ -62,6 +67,7 @@ module Ebooks
             suffix = @sentences[alt[0]][alt[1]..-1]
             potential = tokens[0..start+1] + suffix
             
+            # Ensure we're not just rebuilding some segment of another sentence
             unless verbatim.find { |v| NLP.subseq?(v, potential) || NLP.subseq?(potential, v) }
               used << alt[0]
               variant = potential
@@ -74,7 +80,6 @@ module Ebooks
 
         tokens = variant if variant
       end
-
 
       tokens
     end
