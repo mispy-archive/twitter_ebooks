@@ -7,7 +7,7 @@ require 'digest/md5'
 
 module Ebooks
   class Model
-    attr_accessor :hash, :sentences, :markov, :keywords
+    attr_accessor :hash, :sentences, :generator, :keywords
 
     def self.consume(txtpath)
       Model.new.consume(txtpath)
@@ -67,15 +67,28 @@ module Ebooks
       NLP.htmlentities.decode tweet
     end
 
-    def markov_statement(limit=140, markov=nil)
-      markov ||= MarkovModel.build(@sentences)
+    def valid_tweet?(tokens, limit)
+      tweet = NLP.reconstruct(tokens)
+      tweet.length <= limit && !NLP.unmatched_enclosers?(tweet)
+    end
+
+    def make_statement(limit=140, generator=nil)
+      responding = !generator.nil?
+      generator = SuffixGenerator.build(@sentences)
       tweet = ""
 
-      while (tweet = markov.generate) do
-        next if tweet.length > limit
-        next if NLP.unmatched_enclosers?(tweet)
-        break if tweet.length > limit*0.4 || rand > 0.8
+      while (tokens = generator.generate(3, :bigrams)) do
+        next if tokens.length <= 3 && !responding
+        break if valid_tweet?(tokens, limit)
       end
+
+      if @sentences.include?(tokens) && tokens.length > 3 # We made a verbatim tweet by accident
+        while (tokens = generator.generate(3, :unigrams)) do
+          break if valid_tweet?(tokens, limit) && !@sentences.include?(tokens)
+        end
+      end
+
+      tweet = NLP.reconstruct(tokens)
 
       fix tweet
     end
@@ -101,19 +114,19 @@ module Ebooks
     end
 
     # Generates a response by looking for related sentences
-    # in the corpus and building a smaller markov model from these
-    def markov_response(input, limit=140)
+    # in the corpus and building a smaller generator from these
+    def make_response(input, limit=140)
       # First try 
       relevant, slightly_relevant = relevant_sentences(input)
 
       if relevant.length >= 3
-        markov = MarkovModel.new.consume(relevant)
-        markov_statement(limit, markov)
-      elsif slightly_relevant.length > 5
-        markov = MarkovModel.new.consume(slightly_relevant)
-        markov_statement(limit, markov)
+        generator = SuffixGenerator.build(relevant)
+        make_statement(limit, generator)
+      elsif slightly_relevant.length >= 5
+        generator = SuffixGenerator.build(slightly_relevant)
+        make_statement(limit, generator)
       else
-        markov_statement(limit)
+        make_statement(limit)
       end
     end
   end

@@ -46,9 +46,9 @@ module Ebooks
   def self.gen(model_path, input)
     model = Model.load(model_path)
     if input && !input.empty?
-      puts "@cmd " + model.markov_response(input, 135)
+      puts "@cmd " + model.make_response(input, 135)
     else
-      puts model.markov_statement
+      puts model.make_statement
     end
   end
 
@@ -64,7 +64,7 @@ module Ebooks
   def self.tweet(modelpath, username)
     load File.join(APP_PATH, 'bots.rb')
     model = Model.load(modelpath)
-    statement = model.markov_statement
+    statement = model.make_statement
     log "@#{username}: #{statement}"
     bot = Bot.get(username)
     bot.configure

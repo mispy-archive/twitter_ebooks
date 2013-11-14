@@ -61,7 +61,7 @@ module Ebooks
     # As above, this is ad hoc because tokenization libraries
     # do not behave well wrt. things like emoticons and timestamps
     def self.tokenize(sentence)
-      regex = /\s+|(?<=[#{PUNCTUATION}])(?=[a-zA-Z])|(?<=[a-zA-Z])(?=[#{PUNCTUATION}]+)/
+      regex = /\s+|(?<=[#{PUNCTUATION}]\s)(?=[a-zA-Z])|(?<=[a-zA-Z])(?=[#{PUNCTUATION}]+\s)/
       sentence.split(regex)
     end
 
@@ -149,6 +149,13 @@ module Ebooks
       end
 
       false
+    end
+
+    # Determine if a2 is a subsequence of a1
+    def self.subseq?(a1, a2)
+      a1.each_index.find do |i|
+        a1[i...i+a2.length] == a2
+      end
     end
   end
 end

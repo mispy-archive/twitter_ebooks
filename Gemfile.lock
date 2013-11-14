@@ -1,8 +1,7 @@
 PATH
   remote: .
   specs:
-    twitter_ebooks (2.0.3)
-      bloomfilter-rb
+    twitter_ebooks (2.0.7)
       engtagger
       fast-stemmer
       gingerice
@@ -19,8 +18,6 @@ GEM
     addressable (2.3.5)
     atomic (1.1.14)
     awesome_print (1.2.0)
-    bloomfilter-rb (2.1.1)
-      redis
     cookiejar (0.3.0)
     daemons (1.1.9)
     em-http-request (1.0.3)
@@ -50,7 +47,6 @@ GEM
     minitest (5.0.8)
     multi_json (1.8.2)
     multipart-post (1.2.0)
-    redis (3.0.5)
     rufus-scheduler (3.0.2)
       tzinfo
     simple_oauth (0.2.0)

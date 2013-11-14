@@ -54,9 +54,10 @@ module Ebooks
 
     def chain(tokens)
       if tokens.length == 1
-        matches = @unigrams[tokens[0]]
+        matches = @unigrams[tokens[-1]]
       else
         matches = @bigrams[tokens[-2]][tokens[-1]]
+        matches = @unigrams[tokens[-1]] if matches.length < 2
       end
 
       if matches.empty?
