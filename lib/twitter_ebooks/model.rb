@@ -74,7 +74,7 @@ module Ebooks
 
     def make_statement(limit=140, generator=nil)
       responding = !generator.nil?
-      generator = SuffixGenerator.build(@sentences)
+      generator ||= SuffixGenerator.build(@sentences)
       tweet = ""
 
       while (tokens = generator.generate(3, :bigrams)) do
