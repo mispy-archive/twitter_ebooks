@@ -5,29 +5,29 @@ require 'twitter_ebooks'
 module Ebooks
   APP_PATH = Dir.pwd # XXX do some recursive thing instead
 
-  def self.new(target)
+  def self.new(reponame)
     usage = "Usage: ebooks new <reponame>"
 
-    if target.nil?
+    if reponame.nil?
       log usage
       exit
     end
 
-    target = "./#{reponame}"
+    reponame = "./#{reponame}"
 
-    if File.exists?(target)
-      log "#{target} already exists. Please remove if you want to recreate."
+    if File.exists?(reponame)
+      log "#{reponame} already exists. Please remove if you want to recreate."
       exit
     end
 
-    FileUtils.cp_r(SKELETON_PATH, target) 
+    FileUtils.cp_r(SKELETON_PATH, reponame) 
 
-    File.open(File.join(target, 'bots.rb'), 'w') do |f|
+    File.open(File.join(reponame, 'bots.rb'), 'w') do |f|
       template = File.read(File.join(SKELETON_PATH, 'bots.rb'))
       f.write(template.gsub("{{BOT_NAME}}", reponame))
     end
 
-    log "New twitter_ebooks app created at #{target}"
+    log "New twitter_ebooks app created at #{reponame}"
   end
 
   def self.consume(pathes)
