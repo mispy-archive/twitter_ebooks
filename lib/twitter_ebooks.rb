@@ -1,5 +1,7 @@
 gem 'minitest'
 
+$debug = false
+
 def log(*args)
   STDERR.puts args.map(&:to_s).join(' ')
   STDERR.flush

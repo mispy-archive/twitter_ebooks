@@ -2,6 +2,8 @@
 
 require 'twitter_ebooks'
 
+$debug = true
+
 module Ebooks
   APP_PATH = Dir.pwd # XXX do some recursive thing instead
 

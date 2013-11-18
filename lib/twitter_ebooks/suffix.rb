@@ -44,7 +44,7 @@ module Ebooks
       verbatim = [tokens] # Verbatim sentences to avoid reproducing
 
       0.upto(passes-1) do
-        puts NLP.reconstruct(tokens)
+        log NLP.reconstruct(tokens) if $debug
         varsites = {} # Map bigram start site => next token alternatives
 
         tokens.each_with_index do |token, i|
