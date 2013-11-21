@@ -17,8 +17,8 @@ Gem::Specification.new do |gem|
 
   gem.add_runtime_dependency 'minitest'
 
-  gem.add_runtime_dependency 'twitter'
-  gem.add_runtime_dependency 'tweetstream'
+  gem.add_runtime_dependency 'twitter', '~> 4.5'
+  gem.add_runtime_dependency 'tweetstream', '= 2.5'
   gem.add_runtime_dependency 'rufus-scheduler'
   gem.add_runtime_dependency 'gingerice'
   gem.add_runtime_dependency 'htmlentities'

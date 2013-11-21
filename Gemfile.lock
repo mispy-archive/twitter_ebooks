@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    twitter_ebooks (2.1.0)
+    twitter_ebooks (2.1.1)
       engtagger
       fast-stemmer
       gingerice
@@ -10,7 +10,7 @@ PATH
       minitest
       rufus-scheduler
       tweetstream
-      twitter
+      twitter (~> 4.5)
 
 GEM
   remote: https://rubygems.org/
