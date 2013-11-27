@@ -38,10 +38,9 @@ module Ebooks
       shortname = filename.split('.')[0..-2].join('.')
       hash = Digest::MD5.hexdigest(File.read(path))
 
-      log "Consuming text corpus: #{filename}"
       outpath = File.join(APP_PATH, 'model', "#{shortname}.model")
       Model.consume(path).save(outpath)
-      log "Corpus consumed"
+      log "Corpus consumed to #{outpath}"
     end
   end
 
