@@ -54,12 +54,14 @@ end
 
 Bots defined like this can be spawned by executing `run.rb` in the same directory, and will operate together in a single eventmachine loop. The easiest way to run bots in a semi-permanent fashion is with [Heroku](https://www.heroku.com); just make an app, push the bot repository to it, enable a worker process in the web interface and it ought to chug along merrily forever.
 
+The underlying [tweetstream](https://github.com/tweetstream/tweetstream) and [twitter gem](https://github.com/sferik/twitter) client objects can be accessed at `bot.stream` and `bot.twitter` respectively.
+
 ## Archiving accounts
 
 twitter\_ebooks comes with a syncing tool to download and then incrementally update a local json archive of a user's tweets.
 
 ``` zsh
-➜  ebooks-ebooks git:(master) ebooks archive 0xabad1dea corpus/0xabad1dea.json 
+➜  ebooks archive 0xabad1dea corpus/0xabad1dea.json 
 Currently 20209 tweets for 0xabad1dea
 Received 67 new tweets
 ```
@@ -71,7 +73,7 @@ The first time you'll run this, it'll ask for auth details to connect with. Due 
 In order to use the included text modeling, you'll first need to preprocess your archive into a more efficient form:
 
 ``` zsh
-➜  ebooks-ebooks git:(master) ebooks consume corpus/0xabad1dea.json 
+➜  ebooks consume corpus/0xabad1dea.json 
 Reading json corpus from corpus/0xabad1dea.json
 Removing commented lines and sorting mentions
 Segmenting text into sentences
