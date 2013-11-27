@@ -17,14 +17,22 @@ module Ebooks
       Marshal.load(File.read(path))
     end
 
-    def consume(txtpath)
-      # Record hash of source file so we know to update later
-      @hash = Digest::MD5.hexdigest(File.read(txtpath))
+    def consume(path)
+      content = File.read(path)
+      @hash = Digest::MD5.hexdigest(content)
 
-      text = File.read(txtpath)
+      if path.split('.')[-1] == "json"
+        log "Reading json corpus from #{path}"
+        lines = JSON.parse(content, symbolize_names: true).map do |tweet|
+          tweet[:text]
+        end
+      else
+        log "Reading plaintext corpus from #{path}"
+        lines = content.split("\n")
+      end
+
       log "Removing commented lines and sorting mentions"
 
-      lines = text.split("\n")
       keeping = []
       mentions = []
       lines.each do |l|

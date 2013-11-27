@@ -73,28 +73,30 @@ module Ebooks
     bot.tweet(statement)
   end
 
-  def self.jsonify(old_path, new_path)
-    name = File.basename(old_path).split('.')[0]
-    new_path ||= name + ".json"
+  def self.jsonify(paths)
+    paths.each do |path|
+      name = File.basename(path).split('.')[0]
+      new_path = name + ".json"
 
-    tweets = []
-    id = nil
-    File.read(old_path).split("\n").each do |l|
-      if l.start_with?('# ')
-        id = l.split('# ')[-1]
-      else
-        tweet = { text: l }
-        if id
-          tweet[:id] = id
-          id = nil
+      tweets = []
+      id = nil
+      File.read(path).split("\n").each do |l|
+        if l.start_with?('# ')
+          id = l.split('# ')[-1]
+        else
+          tweet = { text: l }
+          if id
+            tweet[:id] = id
+            id = nil
+          end
+          tweets << tweet
         end
-        tweets << tweet
       end
-    end
 
-    File.open(new_path, 'w') do |f|
-      log "Writing #{tweets.length} tweets to #{new_path}"
-      f.write(JSON.pretty_generate(tweets))
+      File.open(new_path, 'w') do |f|
+        log "Writing #{tweets.length} tweets to #{new_path}"
+        f.write(JSON.pretty_generate(tweets))
+      end
     end
   end
 
@@ -106,7 +108,7 @@ module Ebooks
      ebooks score <model_path> <input>
      ebooks archive <@user> <outpath>
      ebooks tweet <model_path> <@bot>
-     ebooks jsonify <old_corpus_path> [new_corpus_path]
+     ebooks jsonify <old_corpus_path> [...]
 """
 
     if args.length == 0
@@ -121,7 +123,7 @@ module Ebooks
     when "score" then score(args[1], args[2..-1].join(' '))
     when "archive" then archive(args[1], args[2])
     when "tweet" then tweet(args[1], args[2])
-    when "jsonify" then jsonify(args[1], args[2])
+    when "jsonify" then jsonify(args[1..-1])
     end
   end
 end
