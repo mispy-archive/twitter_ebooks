@@ -1,4 +1,4 @@
-# twitter\_ebooks 2.1.3
+# twitter\_ebooks 2.1.4
 
 Rewrite of my twitter\_ebooks code. While the original was solely a tweeting Markov generator, this framework helps you build any kind of interactive twitterbot which responds to mentions/DMs.
 
@@ -10,7 +10,7 @@ gem install twitter_ebooks
 
 ## Setting up a bot
 
-Run `ebooks new [name]` to generate a new repository containing a sample bots.rb file, which looks like this:
+Run `ebooks new <reponame>` to generate a new repository containing a sample bots.rb file, which looks like this:
 
 ``` ruby
 # This is an example bot definition with event handlers commented out
