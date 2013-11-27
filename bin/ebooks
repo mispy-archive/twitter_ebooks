@@ -15,16 +15,16 @@ module Ebooks
       exit
     end
 
-    reponame = "./#{reponame}"
+    path = "./#{reponame}"
 
-    if File.exists?(reponame)
-      log "#{reponame} already exists. Please remove if you want to recreate."
+    if File.exists?(path)
+      log "#{path} already exists. Please remove if you want to recreate."
       exit
     end
 
-    FileUtils.cp_r(SKELETON_PATH, reponame) 
+    FileUtils.cp_r(SKELETON_PATH, path)
 
-    File.open(File.join(reponame, 'bots.rb'), 'w') do |f|
+    File.open(File.join(path, 'bots.rb'), 'w') do |f|
       template = File.read(File.join(SKELETON_PATH, 'bots.rb'))
       f.write(template.gsub("{{BOT_NAME}}", reponame))
     end

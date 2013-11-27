@@ -16,7 +16,7 @@ Run `ebooks new <reponame>` to generate a new repository containing a sample bot
 # This is an example bot definition with event handlers commented out
 # You can define as many of these as you like; they will run simultaneously
 
-Ebooks::Bot.new("./test") do |bot|
+Ebooks::Bot.new("abby_ebooks") do |bot|
   # Consumer details come from registering an app at https://dev.twitter.com/
   # OAuth details can be fetched with https://github.com/marcel/twurl
   bot.consumer_key = "" # Your app consumer key
