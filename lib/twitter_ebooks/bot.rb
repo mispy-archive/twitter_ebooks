@@ -5,7 +5,7 @@ require 'rufus/scheduler'
 
 module Ebooks
   class Bot
-    attr_accessor :consumer_key, :consumer_secret, 
+    attr_accessor :consumer_key, :consumer_secret,
                   :oauth_token, :oauth_token_secret
 
     attr_accessor :username
@@ -70,13 +70,13 @@ module Ebooks
       @stream.on_event(:follow) do |event|
         next if event[:source][:screen_name] == @username
         log "Followed by #{event[:source][:screen_name]}"
-        @on_follow.call(event[:source])
+        @on_follow.call(event[:source]) if @on_follow
       end
 
       @stream.on_direct_message do |dm|
         next if dm[:sender][:screen_name] == @username # Don't reply to self
         log "DM from @#{dm[:sender][:screen_name]}: #{dm[:text]}"
-        @on_message.call(dm)
+        @on_message.call(dm) if @on_message
       end
 
       @stream.userstream do |ev|
@@ -110,9 +110,9 @@ module Ebooks
         # - Or soft-retweeted by somebody else
         if mentions.map(&:downcase).include?(@username.downcase) && !ev[:retweeted_status] && !ev[:text].start_with?('RT ')
           log "Mention from @#{ev[:user][:screen_name]}: #{ev[:text]}"
-          @on_mention.call(ev, meta)
+          @on_mention.call(ev, meta) if @on_mention
         else
-          @on_timeline.call(ev, meta)
+          @on_timeline.call(ev, meta) if @on_timeline
         end
       end
     end
@@ -135,7 +135,7 @@ module Ebooks
         @twitter.direct_message_create(ev[:sender][:screen_name], text, opts)
       elsif ev.is_a? Twitter::Tweet
         log "Replying to @#{ev[:user][:screen_name]} with: #{text}"
-        @twitter.update(text, in_reply_to_status_id: ev[:id]) 
+        @twitter.update(text, in_reply_to_status_id: ev[:id])
       else
         raise Exception("Don't know how to reply to a #{ev.class}")
       end
