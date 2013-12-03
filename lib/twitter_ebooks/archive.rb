@@ -4,7 +4,7 @@
 require 'twitter'
 require 'json'
 
-CONFIG_PATH = "/home/#{ENV['USER']}/.ebooksrc"
+CONFIG_PATH = "#{ENV['HOME']}/.ebooksrc"
 
 module Ebooks
   class Archive
