@@ -84,9 +84,12 @@ Corpus consumed to model/0xabad1dea.model
 
 Notably, this works with both json tweet archives and plaintext files (based on file extension), so you can make a model out of any kind of text. 
 
+Text files use newlines and full stops to seperate statements.
+
 Once you have a model, the primary use is to produce statements and related responses to input, using a pseudo-Markov generator:
 
 ``` ruby
+> require 'twitter_ebooks'
 > model = Ebooks::Model.load("model/0xabad1dea.model")
 > model.make_statement(140)
 => "My Terrible Netbook may be the kind of person who buys Starbucks, but this Rackspace vuln is pretty straight up a backdoor"
