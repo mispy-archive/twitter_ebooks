@@ -49,8 +49,10 @@ module Ebooks
         config.oauth_token_secret = @oauth_token_secret
       end
 
+      needs_stream = [@on_follow, @on_message, @on_mention, @on_timeline].any? {|e| !e.nil?}
+
       @twitter = Twitter::Client.new
-      @stream = TweetStream::Client.new
+      @stream = TweetStream::Client.new if needs_stream
     end
 
     # Connects to tweetstream and opens event handlers for this bot
@@ -59,6 +61,12 @@ module Ebooks
 
       @on_startup.call if @on_startup
 
+      if not @stream
+        log "not bothering with stream for #@username"
+        return
+      end
+
+      log "starting stream for #@username"
       @stream.on_error do |msg|
         log "ERROR: #{msg}"
       end
