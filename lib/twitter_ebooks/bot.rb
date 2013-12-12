@@ -30,8 +30,8 @@ module Ebooks
     end
 
     def log(*args)
-      STDERR.puts "@#{@username}: " + args.map(&:to_s).join(' ')
-      STDERR.flush
+      STDOUT.puts "@#{@username}: " + args.map(&:to_s).join(' ')
+      STDOUT.flush
     end
 
     def configure
