@@ -14,7 +14,7 @@ module Ebooks
     end
 
     def self.load(path)
-      Marshal.load(File.read(path))
+      Marshal.load(File.open(path, 'rb') { |f| f.read })
     end
 
     def consume(path)
@@ -76,7 +76,7 @@ module Ebooks
     end
 
     def save(path)
-      File.open(path, 'w') do |f|
+      File.open(path, 'wb') do |f|
         f.write(Marshal.dump(self))
       end
       self
