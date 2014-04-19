@@ -113,12 +113,23 @@ STR
     Archive.new(username, outpath).sync
   end
 
-  def self.tweet(modelpath, username)
+  def self.tweet(modelpath, botname)
+    usage = <<STR
+Usage: ebooks jsonify <old_corpus_path> [old_corpus_path2] [...]
+
+Takes an old-style corpus of plain tweet text and converts it to json.
+STR
+
+    if modelpath.nil? || botname.nil?
+      log usage
+      exit
+    end
+
     load File.join(APP_PATH, 'bots.rb')
     model = Model.load(modelpath)
     statement = model.make_statement
-    log "@#{username}: #{statement}"
-    bot = Bot.get(username)
+    log "@#{botname}: #{statement}"
+    bot = Bot.get(botname)
     bot.configure
     bot.tweet(statement)
   end
@@ -162,15 +173,16 @@ STR
   end
 
   def self.command(args)
-    usage = """Usage: 
+    usage = <<STR
+Usage: 
      ebooks new <reponame>
      ebooks consume <corpus_path> [corpus_path2] [...]
      ebooks gen <model_path> [input]
      ebooks score <model_path> <input>
      ebooks archive <@user> <outpath>
-     ebooks tweet <model_path> <@bot>
+     ebooks tweet <model_path> <botname>
      ebooks jsonify <old_corpus_path> [old_corpus_path2] [...]
-"""
+STR
 
     if args.length == 0
       log usage
