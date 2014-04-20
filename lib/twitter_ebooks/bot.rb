@@ -103,7 +103,7 @@ module Ebooks
         mless = ev[:text]
         begin
           ev.attrs[:entities][:user_mentions].reverse.each do |entity|
-            mless = mless[0...entity[:indices][0]] + mless[entity[:indices][1]...-1]
+            mless = mless[0...entity[:indices][0]] + mless[entity[:indices][1]+1..-1]
           end
         rescue Exception
           p ev.attrs[:entities][:user_mentions]
@@ -136,7 +136,6 @@ module Ebooks
     # Applies configurable @reply_delay range
     def reply(ev, text, opts={})
       opts = opts.clone
-      delay = @reply_delay.to_a.sample
 
       if ev.is_a? Twitter::DirectMessage
         log "Sending DM to @#{ev[:sender][:screen_name]}: #{text}"
