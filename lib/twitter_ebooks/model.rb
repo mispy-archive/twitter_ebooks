@@ -59,13 +59,13 @@ module Ebooks
 
       statements.each do |s|
         @sentences << NLP.tokenize(s).reject do |t|
-          t.start_with?('@') || t.start_with?('http')
+          t.include?('@') || t.include?('http')
         end
       end
 
       mentions.each do |s|
         @mentions << NLP.tokenize(s).reject do |t|
-          t.start_with?('@') || t.start_with?('http')
+          t.include?('@') || t.include?('http')
         end
       end
 
