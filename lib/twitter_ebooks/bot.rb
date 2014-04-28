@@ -103,7 +103,8 @@ module Ebooks
         mless = ev[:text]
         begin
           ev.attrs[:entities][:user_mentions].reverse.each do |entity|
-            mless = mless[0...entity[:indices][0]] + mless[entity[:indices][1]..-1].strip
+            last = mless[entity[:indices][1]..-1]||''
+            mless = mless[0...entity[:indices][0]] + last.strip
           end
         rescue Exception
           p ev.attrs[:entities][:user_mentions]

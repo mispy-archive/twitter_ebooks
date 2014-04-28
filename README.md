@@ -1,4 +1,4 @@
-# twitter\_ebooks 2.2.2
+# twitter\_ebooks 2.2.3
 
 Rewrite of my twitter\_ebooks code. While the original was solely a tweeting Markov generator, this framework helps you build any kind of interactive twitterbot which responds to mentions/DMs.
 
@@ -63,7 +63,7 @@ The underlying [tweetstream](https://github.com/tweetstream/tweetstream) and [tw
 twitter\_ebooks comes with a syncing tool to download and then incrementally update a local json archive of a user's tweets.
 
 ``` zsh
-➜  ebooks archive 0xabad1dea corpus/0xabad1dea.json 
+➜  ebooks archive 0xabad1dea corpus/0xabad1dea.json
 Currently 20209 tweets for 0xabad1dea
 Received 67 new tweets
 ```
@@ -75,7 +75,7 @@ The first time you'll run this, it'll ask for auth details to connect with. Due 
 In order to use the included text modeling, you'll first need to preprocess your archive into a more efficient form:
 
 ``` zsh
-➜  ebooks consume corpus/0xabad1dea.json 
+➜  ebooks consume corpus/0xabad1dea.json
 Reading json corpus from corpus/0xabad1dea.json
 Removing commented lines and sorting mentions
 Segmenting text into sentences
@@ -84,7 +84,7 @@ Ranking keywords
 Corpus consumed to model/0xabad1dea.model
 ```
 
-Notably, this works with both json tweet archives and plaintext files (based on file extension), so you can make a model out of any kind of text. 
+Notably, this works with both json tweet archives and plaintext files (based on file extension), so you can make a model out of any kind of text.
 
 Text files use newlines and full stops to seperate statements.
 
