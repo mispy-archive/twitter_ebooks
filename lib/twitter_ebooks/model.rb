@@ -4,6 +4,7 @@
 require 'json'
 require 'set'
 require 'digest/md5'
+require 'csv'
 
 module Ebooks
   class Model
@@ -25,6 +26,11 @@ module Ebooks
         log "Reading json corpus from #{path}"
         lines = JSON.parse(content, symbolize_names: true).map do |tweet|
           tweet[:text]
+        end
+      elsif path.split('.')[-1] == "csv"
+        log "Reading CSV corpus from #{path}"
+        lines = CSV.read(path).drop(1).map do |tweet|
+          tweet[5]
         end
       else
         log "Reading plaintext corpus from #{path}"
