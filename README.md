@@ -4,7 +4,7 @@ Rewrite of my twitter\_ebooks code. While the original was solely a tweeting Mar
 
 ## Installation
 
-Requires Ruby 1.9.3+
+Requires Ruby 1.9.3+ (2.1+ recommended)
 
 ```bash
 gem install twitter_ebooks
