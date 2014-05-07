@@ -1,3 +1,5 @@
+# encoding: utf-8
+
 module Ebooks
   # This generator uses data identical to the markov model, but
   # instead of making a chain by looking up bigrams it uses the
@@ -50,7 +52,7 @@ module Ebooks
         tokens.each_with_index do |token, i|
           next_token = tokens[i+1]
           break if next_token.nil?
-          
+
           alternatives = (n == :unigrams) ? @unigrams[next_token] : @bigrams[token][next_token]
           # Filter out suffixes from previous sentences
           alternatives.reject! { |a| a[1] == INTERIM || used.include?(a[0]) }
@@ -66,7 +68,7 @@ module Ebooks
             verbatim << @sentences[alt[0]]
             suffix = @sentences[alt[0]][alt[1]..-1]
             potential = tokens[0..start+1] + suffix
-            
+
             # Ensure we're not just rebuilding some segment of another sentence
             unless verbatim.find { |v| NLP.subseq?(v, potential) || NLP.subseq?(potential, v) }
               used << alt[0]
