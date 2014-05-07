@@ -29,8 +29,10 @@ module Ebooks
         end
       elsif path.split('.')[-1] == "csv"
         log "Reading CSV corpus from #{path}"
+        header = CSV.read(path).first
+        text_col = header.index('text')
         lines = CSV.read(path).drop(1).map do |tweet|
-          tweet[5]
+          tweet[text_col]
         end
       else
         log "Reading plaintext corpus from #{path}"
