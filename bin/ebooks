@@ -174,7 +174,7 @@ STR
 
   def self.command(args)
     usage = <<STR
-Usage: 
+Usage:
      ebooks new <reponame>
      ebooks consume <corpus_path> [corpus_path2] [...]
      ebooks gen <model_path> [input]
@@ -197,6 +197,9 @@ STR
     when "archive" then archive(args[1], args[2])
     when "tweet" then tweet(args[1], args[2])
     when "jsonify" then jsonify(args[1..-1])
+    else
+      log usage
+      exit 1
     end
   end
 end
