@@ -116,9 +116,10 @@ STR
 
   def self.tweet(modelpath, botname)
     usage = <<STR
-Usage: ebooks jsonify <old_corpus_path> [old_corpus_path2] [...]
+Usage: ebooks tweet <model_path> <botname>
 
-Takes an old-style corpus of plain tweet text and converts it to json.
+Sends a public tweet from the specified bot using text
+from the processed model at <model_path>.
 STR
 
     if modelpath.nil? || botname.nil?
