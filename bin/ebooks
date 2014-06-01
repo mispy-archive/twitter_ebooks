@@ -2,6 +2,7 @@
 # encoding: utf-8
 
 require 'twitter_ebooks'
+require 'csv'
 
 $debug = true
 
@@ -154,16 +155,23 @@ STR
 
       tweets = []
       id = nil
-      File.read(path).split("\n").each do |l|
-        if l.start_with?('# ')
-          id = l.split('# ')[-1]
-        else
-          tweet = { text: l }
-          if id
-            tweet[:id] = id
-            id = nil
+      if path.split('.')[-1] == "csv" #from twitter archive
+        csv_archive = CSV.read(path, :headers=>:first_row)
+        tweets = csv_archive.map do |tweet|
+          { text: tweet['text'], id: tweet['tweet_id'] }
+        end
+      else
+        File.read(path).split("\n").each do |l|
+          if l.start_with?('# ')
+            id = l.split('# ')[-1]
+          else
+            tweet = { text: l }
+            if id
+              tweet[:id] = id
+              id = nil
+            end
+            tweets << tweet
           end
-          tweets << tweet
         end
       end
 
