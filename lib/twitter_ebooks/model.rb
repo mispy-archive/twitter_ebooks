@@ -19,7 +19,7 @@ module Ebooks
     end
 
     def consume(path)
-      content = File.read(path)
+      content = File.read(path, :encoding => 'utf-8')
       @hash = Digest::MD5.hexdigest(content)
 
       if path.split('.')[-1] == "json"
@@ -29,9 +29,10 @@ module Ebooks
         end
       elsif path.split('.')[-1] == "csv"
         log "Reading CSV corpus from #{path}"
-        header = CSV.read(path).first
+        content = CSV.parse(content)
+        header = content.shift
         text_col = header.index('text')
-        lines = CSV.read(path).drop(1).map do |tweet|
+        lines = content.map do |tweet|
           tweet[text_col]
         end
       else
