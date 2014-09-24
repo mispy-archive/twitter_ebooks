@@ -37,5 +37,6 @@ Ebooks::Bot.new("{{BOT_NAME}}") do |bot|
     # Tweet something every 24 hours
     # See https://github.com/jmettraux/rufus-scheduler
     # bot.tweet("hi")
+    # bot.pictweet("hi", "cuteselfie.jpg", ":possibly_sensitive => true")
   end
 end
