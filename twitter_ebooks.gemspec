@@ -15,7 +15,9 @@ Gem::Specification.new do |gem|
   gem.require_paths = ["lib"]
   gem.version       = Ebooks::VERSION
 
-  gem.add_runtime_dependency 'minitest'
+  gem.add_development_dependency 'rspec'
+  gem.add_development_dependency 'memory_profiler'
+
 
   gem.add_runtime_dependency 'twitter', '~> 4.5'
   gem.add_runtime_dependency 'tweetstream', '= 2.5'

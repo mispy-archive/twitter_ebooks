@@ -47,7 +47,7 @@ module Ebooks
       lines.each do |l|
         next if l.start_with?('#') # Remove commented lines
         next if l.include?('RT') || l.include?('MT') # Remove soft retweets
-        
+
         if l.include?('@')
           mentions << l
         else
