@@ -163,6 +163,12 @@ module Ebooks
       log "Tweeting #{args.inspect}"
       @twitter.update(*args)
     end
+    
+    # could easily just be *args however the separation keeps it clean.
+    def pictweet(txt, pic, *args)
+      log "Tweeting #{txt.inspect} - #{pic} #{args}"
+      @twitter.update_with_media(txt, File.new(pic), *args)
+    end
 
     def on_startup(&b); @on_startup = b; end
     def on_follow(&b); @on_follow = b; end
