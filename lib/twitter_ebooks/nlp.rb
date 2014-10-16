@@ -43,7 +43,7 @@ module Ebooks
     end
 
     ### Utility functions
-    
+
     # We don't really want to deal with all this weird unicode punctuation
     def self.normalize(text)
       htmlentities.decode text.gsub('“', '"').gsub('”', '"').gsub('’', "'").gsub('…', '...')

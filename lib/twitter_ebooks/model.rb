@@ -18,14 +18,28 @@ module Ebooks
       Marshal.load(File.open(path, 'rb') { |f| f.read })
     end
 
+    def mass_tokenize(text)
+      sentences = NLP.sentences(text)
+      tokens = []
+
+      sentences.each do |s|
+        tokens << NLP.tokenize(s).reject do |t|
+          # Don't include usernames/urls as tokens
+          t.include?('@') || t.include?('http')
+        end
+      end
+
+      tokens
+    end
+
     def consume(path)
       content = File.read(path, :encoding => 'utf-8')
       @hash = Digest::MD5.hexdigest(content)
 
       if path.split('.')[-1] == "json"
         log "Reading json corpus from #{path}"
-        lines = JSON.parse(content, symbolize_names: true).map do |tweet|
-          tweet[:text]
+        lines = JSON.parse(content).map do |tweet|
+          tweet['text']
         end
       elsif path.split('.')[-1] == "csv"
         log "Reading CSV corpus from #{path}"
@@ -42,44 +56,31 @@ module Ebooks
 
       log "Removing commented lines and sorting mentions"
 
-      keeping = []
+      statements = []
       mentions = []
       lines.each do |l|
         next if l.start_with?('#') # Remove commented lines
         next if l.include?('RT') || l.include?('MT') # Remove soft retweets
 
         if l.include?('@')
-          mentions << l
+          statements << NLP.normalize(l)
         else
-          keeping << l
-        end
-      end
-      text = NLP.normalize(keeping.join("\n")) # Normalize weird characters
-      mention_text = NLP.normalize(mentions.join("\n"))
-
-      log "Segmenting text into sentences"
-
-      statements = NLP.sentences(text)
-      mentions = NLP.sentences(mention_text)
-
-      log "Tokenizing #{statements.length} statements and #{mentions.length} mentions"
-      @sentences = []
-      @mentions = []
-
-      statements.each do |s|
-        @sentences << NLP.tokenize(s).reject do |t|
-          t.include?('@') || t.include?('http')
+          mentions << NLP.normalize(l)
         end
       end
 
-      mentions.each do |s|
-        @mentions << NLP.tokenize(s).reject do |t|
-          t.include?('@') || t.include?('http')
-        end
-      end
+      text = statements.join("\n")
+      mention_text = mentions.join("\n")
 
-      log "Ranking keywords"
-      @keywords = NLP.keywords(@sentences)
+      lines = nil; statements = nil; mentions = nil # Allow garbage collection
+
+      log "Tokenizing #{text.count('\n')} statements and #{mention_text.count('\n')} mentions"
+
+      @sentences = mass_tokenize(text)
+      @mentions = mass_tokenize(mention_text)
+
+      #log "Ranking keywords"
+      #@keywords = NLP.keywords(@sentences)
 
       self
     end

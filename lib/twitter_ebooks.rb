@@ -1,5 +1,3 @@
-gem 'minitest'
-
 $debug = false
 
 def log(*args)

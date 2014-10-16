@@ -16,11 +16,12 @@ Gem::Specification.new do |gem|
   gem.version       = Ebooks::VERSION
 
   gem.add_development_dependency 'rspec'
-  gem.add_development_dependency 'memory_profiler'
+  gem.add_development_dependency 'ruby-prof'
+  gem.add_development_dependency 'pry-byebug'
 
 
-  gem.add_runtime_dependency 'twitter', '~> 4.5'
-  gem.add_runtime_dependency 'tweetstream', '= 2.5'
+  gem.add_runtime_dependency 'twitter', '~> 5.1'
+  gem.add_runtime_dependency 'tweetstream'
   gem.add_runtime_dependency 'rufus-scheduler'
   gem.add_runtime_dependency 'gingerice'
   gem.add_runtime_dependency 'htmlentities'
