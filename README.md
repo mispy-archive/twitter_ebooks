@@ -1,4 +1,4 @@
-# twitter\_ebooks 2.2.7
+# twitter\_ebooks 2.2.8
 
 Rewrite of my twitter\_ebooks code. While the original was solely a tweeting Markov generator, this framework helps you build any kind of interactive twitterbot which responds to mentions/DMs. See [ebooks\_example](https://github.com/mispy/ebooks_example) for an example of a full bot.
 
