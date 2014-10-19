@@ -43,7 +43,7 @@ module Ebooks
         config.oauth_token_secret = @oauth_token_secret
       end
 
-      Twitter.configure do |config|
+      @twitter = Twitter::REST::Client.new do |config|
         config.consumer_key = @consumer_key
         config.consumer_secret = @consumer_secret
         config.oauth_token = @oauth_token
@@ -52,7 +52,6 @@ module Ebooks
 
       needs_stream = [@on_follow, @on_message, @on_mention, @on_timeline].any? {|e| !e.nil?}
 
-      @twitter = Twitter::Client.new
       @stream = TweetStream::Client.new if needs_stream
     end
 
@@ -163,7 +162,7 @@ module Ebooks
       log "Tweeting #{args.inspect}"
       @twitter.update(*args)
     end
-    
+
     # could easily just be *args however the separation keeps it clean.
     def pictweet(txt, pic, *args)
       log "Tweeting #{txt.inspect} - #{pic} #{args}"

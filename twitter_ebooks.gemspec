@@ -16,7 +16,7 @@ Gem::Specification.new do |gem|
   gem.version       = Ebooks::VERSION
 
   gem.add_development_dependency 'rspec'
-  gem.add_development_dependency 'ruby-prof'
+  gem.add_development_dependency 'memory_profiler'
   gem.add_development_dependency 'pry-byebug'
 
 

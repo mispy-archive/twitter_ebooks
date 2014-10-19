@@ -79,8 +79,8 @@ module Ebooks
       @sentences = mass_tokenize(text)
       @mentions = mass_tokenize(mention_text)
 
-      #log "Ranking keywords"
-      #@keywords = NLP.keywords(@sentences)
+      log "Ranking keywords"
+      @keywords = NLP.keywords(@sentences)
 
       self
     end
