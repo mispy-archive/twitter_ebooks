@@ -19,9 +19,8 @@ Gem::Specification.new do |gem|
   gem.add_development_dependency 'memory_profiler'
   gem.add_development_dependency 'pry-byebug'
 
-
   gem.add_runtime_dependency 'twitter', '~> 4.0'
-  gem.add_runtime_dependency 'simple_oauth'
+  gem.add_runtime_dependency 'simple_oauth', '~> 0.2.0'
   gem.add_runtime_dependency 'tweetstream'
   gem.add_runtime_dependency 'rufus-scheduler'
   gem.add_runtime_dependency 'gingerice'
