@@ -31,12 +31,14 @@ module Ebooks
         end
       end
 
-      Twitter::REST::Client.new do |config|
+      Twitter.configure do |config|
         config.consumer_key = @config[:consumer_key]
         config.consumer_secret = @config[:consumer_secret]
-        config.access_token = @config[:oauth_token]
-        config.access_token_secret = @config[:oauth_token_secret]
+        config.oauth_token = @config[:oauth_token]
+        config.oauth_token_secret = @config[:oauth_token_secret]
       end
+
+      Twitter::Client.new
     end
 
     def initialize(username, path, client=nil)
