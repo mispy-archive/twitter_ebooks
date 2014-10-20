@@ -63,9 +63,9 @@ module Ebooks
         next if l.include?('RT') || l.include?('MT') # Remove soft retweets
 
         if l.include?('@')
-          statements << NLP.normalize(l)
-        else
           mentions << NLP.normalize(l)
+        else
+          statements << NLP.normalize(l)
         end
       end
 

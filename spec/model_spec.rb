@@ -1,5 +1,6 @@
 require 'spec_helper'
 require 'memory_profiler'
+require 'tempfile'
 
 def Process.rss; `ps -o rss= -p #{Process.pid}`.chomp.to_i; end
 
@@ -10,5 +11,31 @@ describe Ebooks::Model do
     end
 
     expect(report.total_memsize).to be < 1000000000
+  end
+
+  describe '.consume' do
+    it 'interprets lines with @ as mentions' do
+      file = Tempfile.new('mentions')
+      file.write('@m1spy hello!')
+      file.close
+
+      model = Ebooks::Model.consume(file.path)
+      expect(model.sentences.count).to eq 0
+      expect(model.mentions.count).to eq 1
+
+      file.unlink
+    end
+
+    it 'interprets lines without @ as statements' do
+      file = Tempfile.new('statements')
+      file.write('hello!')
+      file.close
+
+      model = Ebooks::Model.consume(file.path)
+      expect(model.mentions.count).to eq 0
+      expect(model.sentences.count).to eq 1
+
+      file.unlink
+    end
   end
 end
