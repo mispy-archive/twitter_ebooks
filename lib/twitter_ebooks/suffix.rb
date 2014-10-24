@@ -15,24 +15,24 @@ module Ebooks
       @unigrams = {}
       @bigrams = {}
 
-      @sentences.each_with_index do |tokens, i|
-        last_token = INTERIM
-        tokens.each_with_index do |token, j|
-          @unigrams[last_token] ||= []
-          @unigrams[last_token] << [i, j]
+      @sentences.each_with_index do |tikis, i|
+        last_tiki = INTERIM
+        tikis.each_with_index do |tiki, j|
+          @unigrams[last_tiki] ||= []
+          @unigrams[last_tiki] << [i, j]
 
-          @bigrams[last_token] ||= {}
-          @bigrams[last_token][token] ||= []
+          @bigrams[last_tiki] ||= {}
+          @bigrams[last_tiki][tiki] ||= []
 
-          if j == tokens.length-1 # Mark sentence endings
-            @unigrams[token] ||= []
-            @unigrams[token] << [i, INTERIM]
-            @bigrams[last_token][token] << [i, INTERIM]
+          if j == tikis.length-1 # Mark sentence endings
+            @unigrams[tiki] ||= []
+            @unigrams[tiki] << [i, INTERIM]
+            @bigrams[last_tiki][tiki] << [i, INTERIM]
           else
-            @bigrams[last_token][token] << [i, j+1]
+            @bigrams[last_tiki][tiki] << [i, j+1]
           end
 
-          last_token = token
+          last_tiki = tiki
         end
       end
 
@@ -41,19 +41,18 @@ module Ebooks
 
     def generate(passes=5, n=:unigrams)
       index = rand(@sentences.length)
-      tokens = @sentences[index]
+      tikis = @sentences[index]
       used = [index] # Sentences we've already used
-      verbatim = [tokens] # Verbatim sentences to avoid reproducing
+      verbatim = [tikis] # Verbatim sentences to avoid reproducing
 
       0.upto(passes-1) do
-        log NLP.reconstruct(tokens) if $debug
-        varsites = {} # Map bigram start site => next token alternatives
+        varsites = {} # Map bigram start site => next tiki alternatives
 
-        tokens.each_with_index do |token, i|
-          next_token = tokens[i+1]
-          break if next_token.nil?
+        tikis.each_with_index do |tiki, i|
+          next_tiki = tikis[i+1]
+          break if next_tiki.nil?
 
-          alternatives = (n == :unigrams) ? @unigrams[next_token] : @bigrams[token][next_token]
+          alternatives = (n == :unigrams) ? @unigrams[next_tiki] : @bigrams[tiki][next_tiki]
           # Filter out suffixes from previous sentences
           alternatives.reject! { |a| a[1] == INTERIM || used.include?(a[0]) }
           varsites[i] = alternatives unless alternatives.empty?
@@ -67,7 +66,7 @@ module Ebooks
             start, alt = site[0], site[1].sample
             verbatim << @sentences[alt[0]]
             suffix = @sentences[alt[0]][alt[1]..-1]
-            potential = tokens[0..start+1] + suffix
+            potential = tikis[0..start+1] + suffix
 
             # Ensure we're not just rebuilding some segment of another sentence
             unless verbatim.find { |v| NLP.subseq?(v, potential) || NLP.subseq?(potential, v) }
@@ -80,10 +79,10 @@ module Ebooks
           break if variant
         end
 
-        tokens = variant if variant
+        tikis = variant if variant
       end
 
-      tokens
+      tikis
     end
   end
 end

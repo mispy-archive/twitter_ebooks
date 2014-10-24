@@ -18,18 +18,31 @@ module Ebooks
       Marshal.load(File.open(path, 'rb') { |f| f.read })
     end
 
-    def mass_tokenize(text)
-      sentences = NLP.sentences(text)
-      tokens = []
+    def initialize
+      # This is the only source of actual strings in the model. It is
+      # an array of unique tokens. Manipulation of a token is mostly done
+      # using its index in this array, which we call a "tiki"
+      @tokens = []
 
-      sentences.each do |s|
-        tokens << NLP.tokenize(s).reject do |t|
+      # Reverse lookup tiki by token, for faster generation
+      @tikis = {}
+    end
+
+    def tikify(token)
+      @tikis[token] or (@tokens << token and @tikis[token] = @tokens.length-1)
+    end
+
+    def mass_tikify(text)
+      sentences = NLP.sentences(text)
+
+      sentences.map do |s|
+        tokens = NLP.tokenize(s).reject do |t|
           # Don't include usernames/urls as tokens
           t.include?('@') || t.include?('http')
         end
-      end
 
-      tokens
+        tokens.map { |t| tikify(t) }
+      end
     end
 
     def consume(path)
@@ -76,11 +89,11 @@ module Ebooks
 
       log "Tokenizing #{text.count('\n')} statements and #{mention_text.count('\n')} mentions"
 
-      @sentences = mass_tokenize(text)
-      @mentions = mass_tokenize(mention_text)
+      @sentences = mass_tikify(text)
+      @mentions = mass_tikify(mention_text)
 
       log "Ranking keywords"
-      @keywords = NLP.keywords(@sentences)
+      @keywords = NLP.keywords(text)
 
       self
     end
@@ -106,8 +119,8 @@ module Ebooks
       NLP.htmlentities.decode tweet
     end
 
-    def valid_tweet?(tokens, limit)
-      tweet = NLP.reconstruct(tokens)
+    def valid_tweet?(tikis, limit)
+      tweet = NLP.reconstruct(tikis, @tokens)
       tweet.length <= limit && !NLP.unmatched_enclosers?(tweet)
     end
 
@@ -118,24 +131,24 @@ module Ebooks
       retries = 0
       tweet = ""
 
-      while (tokens = generator.generate(3, :bigrams)) do
-        next if tokens.length <= 3 && !responding
-        break if valid_tweet?(tokens, limit)
+      while (tikis = generator.generate(3, :bigrams)) do
+        next if tikis.length <= 3 && !responding
+        break if valid_tweet?(tikis, limit)
 
         retries += 1
         break if retries >= retry_limit
       end
 
-      if verbatim?(tokens) && tokens.length > 3 # We made a verbatim tweet by accident
-        while (tokens = generator.generate(3, :unigrams)) do
-          break if valid_tweet?(tokens, limit) && !verbatim?(tokens)
+      if verbatim?(tikis) && tikis.length > 3 # We made a verbatim tweet by accident
+        while (tikis = generator.generate(3, :unigrams)) do
+          break if valid_tweet?(tikis, limit) && !verbatim?(tikis)
 
           retries += 1
           break if retries >= retry_limit
         end
       end
 
-      tweet = NLP.reconstruct(tokens)
+      tweet = NLP.reconstruct(tikis, @tokens)
 
       if retries >= retry_limit
         log "Unable to produce valid non-verbatim tweet; using \"#{tweet}\""
@@ -159,7 +172,7 @@ module Ebooks
 
       sentences.each do |sent|
         tokenized.each do |token|
-          if sent.map(&:downcase).include?(token)
+          if sent.map { |tiki| @tokens[tiki].downcase }.include?(token)
             relevant << sent unless NLP.stopword?(token)
             slightly_relevant << sent
           end

@@ -69,9 +69,9 @@ module Ebooks
       Stemmer::stem_word(word.downcase)
     end
 
-    def self.keywords(sentences)
+    def self.keywords(text)
       # Preprocess to remove stopwords (highscore's blacklist is v. slow)
-      text = sentences.flatten.reject { |t| stopword?(t) }.join(' ')
+      text = NLP.tokenize(text).reject { |t| stopword?(t) }.join(' ')
 
       text = Highscore::Content.new(text)
 
@@ -91,11 +91,12 @@ module Ebooks
     end
 
     # Takes a list of tokens and builds a nice-looking sentence
-    def self.reconstruct(tokens)
+    def self.reconstruct(tikis, tokens)
       text = ""
       last_token = nil
-      tokens.each do |token|
-        next if token == INTERIM
+      tikis.each do |tiki|
+        next if tiki == INTERIM
+        token = tokens[tiki]
         text += ' ' if last_token && space_between?(last_token, token)
         text += token
         last_token = token

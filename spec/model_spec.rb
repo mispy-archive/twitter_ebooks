@@ -5,6 +5,23 @@ require 'tempfile'
 def Process.rss; `ps -o rss= -p #{Process.pid}`.chomp.to_i; end
 
 describe Ebooks::Model do
+  describe 'making tweets' do
+    before(:all) { @model = Ebooks::Model.consume(path("data/0xabad1dea.json")) }
+
+    it "generates a tweet" do
+      s = @model.make_statement
+      expect(s.length).to be <= 140
+      puts s
+    end
+
+    it "generates an appropriate response" do
+      s = @model.make_response("hi")
+      expect(s.length).to be <= 140
+      expect(s.downcase).to include("hi")
+      puts s
+    end
+  end
+
   it "does not use a ridiculous amount of memory" do
     report = MemoryUsage.report do
       model = Ebooks::Model.consume(path("data/0xabad1dea.json"))
