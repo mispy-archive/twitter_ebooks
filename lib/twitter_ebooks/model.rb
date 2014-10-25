@@ -113,7 +113,7 @@ module Ebooks
       @mentions = mass_tikify(mention_text)
 
       log "Ranking keywords"
-      @keywords = NLP.keywords(text)
+      @keywords = NLP.keywords(text).top(200).map(&:to_s)
 
       self
     end

@@ -22,12 +22,28 @@ describe Ebooks::Model do
     end
   end
 
-  it "does not use a ridiculous amount of memory" do
+  it "consumes, saves and loads models correctly" do
+    model = nil
+
     report = MemoryUsage.report do
       model = Ebooks::Model.consume(path("data/0xabad1dea.json"))
     end
+    expect(report.total_memsize).to be < 200000000
 
-    expect(report.total_memsize).to be < 1000000000
+    file = Tempfile.new("0xabad1dea")
+    model.save(file.path)
+
+    report2 = MemoryUsage.report do
+      model = Ebooks::Model.load(file.path)
+    end
+    expect(report2.total_memsize).to be < 3000000
+
+    expect(model.tokens[0]).to be_a String
+    expect(model.sentences[0][0]).to be_a Fixnum
+    expect(model.mentions[0][0]).to be_a Fixnum
+    expect(model.keywords[0]).to be_a String
+
+    puts "0xabad1dea.model uses #{report2.total_memsize} bytes in memory"
   end
 
   describe '.consume' do
