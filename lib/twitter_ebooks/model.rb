@@ -15,7 +15,23 @@ module Ebooks
     end
 
     def self.load(path)
-      Marshal.load(File.open(path, 'rb') { |f| f.read })
+      props = Marshal.load(File.open(path, 'rb') { |f| f.read })
+      @tokens = props[:tokens]
+      @sentences = props[:sentences]
+      @mentions = props[:mentions]
+      @keywords = props[:keywords]
+    end
+
+    def save(path)
+      File.open(path, 'wb') do |f|
+        f.write(Marshal.dump({
+          tokens: @tokens,
+          sentences: @sentences,
+          mentions: @mentions,
+          keywords: @keywords
+        }))
+      end
+      self
     end
 
     def initialize
@@ -95,13 +111,6 @@ module Ebooks
       log "Ranking keywords"
       @keywords = NLP.keywords(text)
 
-      self
-    end
-
-    def save(path)
-      File.open(path, 'wb') do |f|
-        f.write(Marshal.dump(self))
-      end
       self
     end
 
