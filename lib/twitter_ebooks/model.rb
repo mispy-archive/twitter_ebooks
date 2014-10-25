@@ -8,18 +8,22 @@ require 'csv'
 
 module Ebooks
   class Model
-    attr_accessor :hash, :sentences, :mentions, :keywords
+    attr_accessor :hash, :tokens, :sentences, :mentions, :keywords
 
     def self.consume(txtpath)
       Model.new.consume(txtpath)
     end
 
     def self.load(path)
-      props = Marshal.load(File.open(path, 'rb') { |f| f.read })
-      @tokens = props[:tokens]
-      @sentences = props[:sentences]
-      @mentions = props[:mentions]
-      @keywords = props[:keywords]
+      model = Model.new
+      model.instance_eval do
+        props = Marshal.load(File.open(path, 'rb') { |f| f.read })
+        @tokens = props[:tokens]
+        @sentences = props[:sentences]
+        @mentions = props[:mentions]
+        @keywords = props[:keywords]
+      end
+      model
     end
 
     def save(path)
