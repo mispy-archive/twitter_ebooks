@@ -43,14 +43,12 @@ module Ebooks
         config.oauth_token_secret = @oauth_token_secret
       end
 
-      Twitter.configure do |config|
+      @twitter = Twitter::REST::Client.new do |config|
         config.consumer_key = @consumer_key
         config.consumer_secret = @consumer_secret
         config.oauth_token = @oauth_token
         config.oauth_token_secret = @oauth_token_secret
       end
-
-      @twitter = Twitter::Client.new
 
       needs_stream = [@on_follow, @on_message, @on_mention, @on_timeline].any? {|e| !e.nil?}
 
@@ -119,7 +117,7 @@ module Ebooks
         # - The tweet mentions list contains our username
         # - The tweet is not being retweeted by somebody else
         # - Or soft-retweeted by somebody else
-        if mentions.map(&:downcase).include?(@username.downcase) && !ev[:retweeted_status] && !ev[:text].start_with?('RT ')
+        if mentions.map(&:downcase).include?(@username.downcase) && !ev.retweeted_status? && !ev[:text].start_with?('RT ')
           log "Mention from @#{ev[:user][:screen_name]}: #{ev[:text]}"
           @on_mention.call(ev, meta) if @on_mention
         else
