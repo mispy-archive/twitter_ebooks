@@ -88,19 +88,19 @@ module Ebooks
       end
 
       @stream.userstream do |ev|
-        next unless ev[:text] # If it's not a text-containing tweet, ignore it
-        next if ev[:user][:screen_name] == @username # Ignore our own tweets
+        next unless ev.text # If it's not a text-containing tweet, ignore it
+        next if ev.user.screen_name == @username # Ignore our own tweets
 
         meta = {}
         mentions = ev.attrs[:entities][:user_mentions].map { |x| x[:screen_name] }
 
         reply_mentions = mentions.reject { |m| m.downcase == @username.downcase }
-        reply_mentions = [ev[:user][:screen_name]] + reply_mentions
+        reply_mentions = [ev.user.screen_name] + reply_mentions
 
         meta[:reply_prefix] = reply_mentions.uniq.map { |m| '@'+m }.join(' ') + ' '
         meta[:limit] = 140 - meta[:reply_prefix].length
 
-        mless = ev[:text]
+        mless = ev.text
         begin
           ev.attrs[:entities][:user_mentions].reverse.each do |entity|
             last = mless[entity[:indices][1]..-1]||''
@@ -117,8 +117,8 @@ module Ebooks
         # - The tweet mentions list contains our username
         # - The tweet is not being retweeted by somebody else
         # - Or soft-retweeted by somebody else
-        if mentions.map(&:downcase).include?(@username.downcase) && !ev.retweeted_status? && !ev[:text].start_with?('RT ')
-          log "Mention from @#{ev[:user][:screen_name]}: #{ev[:text]}"
+        if mentions.map(&:downcase).include?(@username.downcase) && !ev.retweeted_status? && !ev.text.start_with?('RT ')
+          log "Mention from @#{ev.user.screen_name}: #{ev.text}"
           @on_mention.call(ev, meta) if @on_mention
         else
           @on_timeline.call(ev, meta) if @on_timeline
@@ -142,8 +142,8 @@ module Ebooks
         log "Sending DM to @#{ev[:sender][:screen_name]}: #{text}"
         @twitter.direct_message_create(ev[:sender][:screen_name], text, opts)
       elsif ev.is_a? Twitter::Tweet
-        log "Replying to @#{ev[:user][:screen_name]} with: #{text}"
-        @twitter.update(text, in_reply_to_status_id: ev[:id])
+        log "Replying to @#{ev.user.screen_name} with: #{text}"
+        @twitter.update(text, in_reply_to_status_id: ev.id)
       else
         raise Exception("Don't know how to reply to a #{ev.class}")
       end
