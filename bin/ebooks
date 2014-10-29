@@ -62,6 +62,32 @@ STR
     end
   end
 
+  def self.consume_all(name, paths)
+    usage = <<STR
+Usage: ebooks consume-all <name> <corpus_path> [corpus_path2] [...]
+
+Processes some number of text files or json tweet corpuses
+into one usable model. It will be output at model/<name>.model
+STR
+
+    if paths.empty?
+      log usage
+      exit
+    end
+
+    outpath = File.join(APP_PATH, 'model', "#{name}.model")
+    #pathes.each do |path|
+    #  filename = File.basename(path)
+    #  shortname = filename.split('.')[0..-2].join('.')
+    #
+    #  outpath = File.join(APP_PATH, 'model', "#{shortname}.model")
+    #  Model.consume(path).save(outpath)
+    #  log "Corpus consumed to #{outpath}"
+    #end
+    Model.consume_all(paths).save(outpath)
+    log "Corpuses consumed to #{outpath}"
+  end
+
   def self.gen(model_path, input)
     usage = <<STR
 Usage: ebooks gen <model_path> [input]
@@ -187,6 +213,7 @@ STR
 Usage:
      ebooks new <reponame>
      ebooks consume <corpus_path> [corpus_path2] [...]
+     ebooks consume-all <corpus_path> [corpus_path2] [...]
      ebooks gen <model_path> [input]
      ebooks score <model_path> <input>
      ebooks archive <@user> <outpath>
@@ -202,6 +229,7 @@ STR
     case args[0]
     when "new" then new(args[1])
     when "consume" then consume(args[1..-1])
+    when "consume-all" then consume_all(args[1], args[2..-1])
     when "gen" then gen(args[1], args[2..-1].join(' '))
     when "score" then score(args[1], args[2..-1].join(' '))
     when "archive" then archive(args[1], args[2])
