@@ -25,6 +25,11 @@ Ebooks::Bot.new("abby_ebooks") do |bot|
   bot.consumer_secret = "" # Your app consumer secret
   bot.oauth_token = "" # Token connecting the app to this account
   bot.oauth_token_secret = "" # Secret connecting the app to this account
+  
+  bot.on_startup do
+    # Run some startup task
+    # puts "I'm ready!"
+  end
 
   bot.on_message do |dm|
     # Reply to a DM
