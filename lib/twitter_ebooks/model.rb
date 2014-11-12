@@ -14,6 +14,10 @@ module Ebooks
       Model.new.consume(txtpath)
     end
 
+    def self.consume_all(paths)
+      Model.new.consume_all(paths)
+    end
+
     def self.load(path)
       model = Model.new
       model.instance_eval do
@@ -87,6 +91,10 @@ module Ebooks
         lines = content.split("\n")
       end
 
+      consume_lines(lines)
+    end
+
+    def consume_lines(lines)
       log "Removing commented lines and sorting mentions"
 
       statements = []
@@ -116,6 +124,36 @@ module Ebooks
       @keywords = NLP.keywords(text).top(200).map(&:to_s)
 
       self
+    end
+
+    def consume_all(paths)
+      lines = []
+      paths.each do |path|
+        content = File.read(path, :encoding => 'utf-8')
+        @hash = Digest::MD5.hexdigest(content)
+
+        if path.split('.')[-1] == "json"
+          log "Reading json corpus from #{path}"
+          l = JSON.parse(content).map do |tweet|
+            tweet['text']
+          end
+          lines.concat(l)
+        elsif path.split('.')[-1] == "csv"
+          log "Reading CSV corpus from #{path}"
+          content = CSV.parse(content)
+          header = content.shift
+          text_col = header.index('text')
+          l = content.map do |tweet|
+            tweet[text_col]
+          end
+          lines.concat(l)
+        else
+          log "Reading plaintext corpus from #{path}"
+          l = content.split("\n")
+          lines.concat(l)
+        end
+      end
+      consume_lines(lines)
     end
 
     def fix(tweet)
