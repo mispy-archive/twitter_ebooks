@@ -112,50 +112,48 @@ module Ebooks
           next if ev.sender.screen_name == @username # Don't reply to self
           log "DM from @#{ev.sender.screen_name}: #{ev.text}"
           @on_message.call(ev) if @on_message
-        end
-
-        next unless ev.respond_to? :name
-
-        if ev.name == :follow
+        elsif ev.respond_to?(:name) && ev.name == :follow
           next if ev.source.screen_name == @username
           log "Followed by #{ev.source.screen_name}"
           @on_follow.call(ev.source) if @on_follow
-        end
+        elsif ev.is_a? Twitter::Tweet
+          next unless ev.text # If it's not a text-containing tweet, ignore it
+          next if ev.user.screen_name == @username # Ignore our own tweets
 
-        next unless ev.text # If it's not a text-containing tweet, ignore it
-        next if ev.user.screen_name == @username # Ignore our own tweets
+          meta = {}
+          mentions = ev.attrs[:entities][:user_mentions].map { |x| x[:screen_name] }
 
-        meta = {}
-        mentions = ev.attrs[:entities][:user_mentions].map { |x| x[:screen_name] }
+          reply_mentions = mentions.reject { |m| m.downcase == @username.downcase }
+          reply_mentions = [ev.user.screen_name] + reply_mentions
 
-        reply_mentions = mentions.reject { |m| m.downcase == @username.downcase }
-        reply_mentions = [ev.user.screen_name] + reply_mentions
+          meta[:reply_prefix] = reply_mentions.uniq.map { |m| '@'+m }.join(' ') + ' '
+          meta[:limit] = 140 - meta[:reply_prefix].length
 
-        meta[:reply_prefix] = reply_mentions.uniq.map { |m| '@'+m }.join(' ') + ' '
-        meta[:limit] = 140 - meta[:reply_prefix].length
-
-        mless = ev.text
-        begin
-          ev.attrs[:entities][:user_mentions].reverse.each do |entity|
-            last = mless[entity[:indices][1]..-1]||''
-            mless = mless[0...entity[:indices][0]] + last.strip
+          mless = ev.text
+          begin
+            ev.attrs[:entities][:user_mentions].reverse.each do |entity|
+              last = mless[entity[:indices][1]..-1]||''
+              mless = mless[0...entity[:indices][0]] + last.strip
+            end
+          rescue Exception
+            p ev.attrs[:entities][:user_mentions]
+            p ev.text
+            raise
           end
-        rescue Exception
-          p ev.attrs[:entities][:user_mentions]
-          p ev.text
-          raise
-        end
-        meta[:mentionless] = mless
+          meta[:mentionless] = mless
 
-        # To check if this is a mention, ensure:
-        # - The tweet mentions list contains our username
-        # - The tweet is not being retweeted by somebody else
-        # - Or soft-retweeted by somebody else
-        if mentions.map(&:downcase).include?(@username.downcase) && !ev.retweeted_status? && !ev.text.start_with?('RT ')
-          log "Mention from @#{ev.user.screen_name}: #{ev.text}"
-          @on_mention.call(ev, meta) if @on_mention
+          # To check if this is a mention, ensure:
+          # - The tweet mentions list contains our username
+          # - The tweet is not being retweeted by somebody else
+          # - Or soft-retweeted by somebody else
+          if mentions.map(&:downcase).include?(@username.downcase) && !ev.retweeted_status? && !ev.text.start_with?('RT ')
+            log "Mention from @#{ev.user.screen_name}: #{ev.text}"
+            @on_mention.call(ev, meta) if @on_mention
+          else
+            @on_timeline.call(ev, meta) if @on_timeline
+          end
         else
-          @on_timeline.call(ev, meta) if @on_timeline
+          log "Unsure how to handle event: ", ev
         end
       end
     end
@@ -191,7 +189,6 @@ module Ebooks
     # Reply to a tweet or a DM.
     # Applies configurable @reply_delay range
     def reply(ev, text, opts={})
-      p "reply???"
       opts = opts.clone
 
       if ev.is_a? Twitter::DirectMessage
