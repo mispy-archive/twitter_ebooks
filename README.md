@@ -1,4 +1,4 @@
-# twitter\_ebooks 2.3.2
+# twitter\_ebooks
 
 [![Gem Version](https://badge.fury.io/rb/twitter_ebooks.svg)](http://badge.fury.io/rb/twitter_ebooks)
 [![Build Status](https://travis-ci.org/mispy/twitter_ebooks.svg)](https://travis-ci.org/mispy/twitter_ebooks)
