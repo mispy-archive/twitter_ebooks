@@ -21,9 +21,9 @@ module Ebooks
         @config[:consumer_key] = STDIN.gets.chomp
         print "Consumer secret: "
         @config[:consumer_secret] = STDIN.gets.chomp
-        print "Oauth token: "
+        print "Access token: "
         @config[:oauth_token] = STDIN.gets.chomp
-        print "Oauth secret: "
+        print "Access secret: "
         @config[:oauth_token_secret] = STDIN.gets.chomp
 
         File.open(CONFIG_PATH, 'w') do |f|
@@ -34,8 +34,8 @@ module Ebooks
       Twitter::REST::Client.new do |config|
         config.consumer_key = @config[:consumer_key]
         config.consumer_secret = @config[:consumer_secret]
-        config.oauth_token = @config[:oauth_token]
-        config.oauth_token_secret = @config[:oauth_token_secret]
+        config.access_token = @config[:oauth_token]
+        config.access_token_secret = @config[:oauth_token_secret]
       end
     end
 
