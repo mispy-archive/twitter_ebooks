@@ -1,8 +1,49 @@
 #!/usr/bin/env ruby
 # encoding: utf-8
 require 'twitter'
-require 'tweetstream'
 require 'rufus/scheduler'
+require 'eventmachine'
+
+# Wrap SSLSocket so that readpartial yields the fiber instead of
+# blocking when there is no data
+#
+# We hand this to the twitter library so we can select on the sockets
+# and thus run multiple streams without them blocking
+class FiberSSLSocket
+  def initialize(*args)
+    @socket = OpenSSL::SSL::SSLSocket.new(*args)
+  end
+
+  def readpartial(maxlen)
+    data = ""
+
+    loop do
+      begin
+        data = @socket.read_nonblock(maxlen)
+      rescue IO::WaitReadable
+      end
+      break if data.length > 0
+      Fiber.yield(@socket)
+    end
+
+    data
+  end
+
+  def method_missing(m, *args)
+    @socket.send(m, *args)
+  end
+end
+
+# An EventMachine handler which resumes a fiber on incoming data
+class FiberSocketHandler < EventMachine::Connection
+  def initialize(fiber)
+    @fiber = fiber
+  end
+
+  def notify_readable
+    @fiber.resume
+  end
+end
 
 module Ebooks
   class Bot
@@ -36,58 +77,51 @@ module Ebooks
     end
 
     def configure
-      TweetStream.configure do |config|
-        config.consumer_key = @consumer_key
-        config.consumer_secret = @consumer_secret
-        config.oauth_token = @oauth_token
-        config.oauth_token_secret = @oauth_token_secret
-      end
 
       @twitter = Twitter::REST::Client.new do |config|
         config.consumer_key = @consumer_key
         config.consumer_secret = @consumer_secret
-        config.oauth_token = @oauth_token
-        config.oauth_token_secret = @oauth_token_secret
+        config.access_token = @oauth_token
+        config.access_token_secret = @oauth_token_secret
       end
 
       needs_stream = [@on_follow, @on_message, @on_mention, @on_timeline].any? {|e| !e.nil?}
 
-      @stream = TweetStream::Client.new if needs_stream
+      if needs_stream
+        @stream = Twitter::Streaming::Client.new(
+          ssl_socket_class: FiberSSLSocket
+        ) do |config|
+          config.consumer_key = @consumer_key
+          config.consumer_secret = @consumer_secret
+          config.access_token = @oauth_token
+          config.access_token_secret = @oauth_token_secret
+        end
+      end
     end
 
-    # Connects to tweetstream and opens event handlers for this bot
-    def start
-      configure
-
-      @on_startup.call if @on_startup
-
-      if not @stream
-        log "not bothering with stream for #@username"
-        return
-      end
-
+    def start_stream
       log "starting stream for #@username"
-      @stream.on_error do |msg|
-        log "ERROR: #{msg}"
-      end
-
-      @stream.on_inited do
+      @stream.before_request do
         log "Online!"
       end
 
-      @stream.on_event(:follow) do |event|
-        next if event[:source][:screen_name] == @username
-        log "Followed by #{event[:source][:screen_name]}"
-        @on_follow.call(event[:source]) if @on_follow
-      end
+      @stream.user do |ev|
+        p ev
 
-      @stream.on_direct_message do |dm|
-        next if dm[:sender][:screen_name] == @username # Don't reply to self
-        log "DM from @#{dm[:sender][:screen_name]}: #{dm[:text]}"
-        @on_message.call(dm) if @on_message
-      end
+        if ev.is_a? Twitter::DirectMessage
+          next if ev.sender.screen_name == @username # Don't reply to self
+          log "DM from @#{ev.sender.screen_name}: #{ev.text}"
+          @on_message.call(ev) if @on_message
+        end
 
-      @stream.userstream do |ev|
+        next unless ev.respond_to? :name
+
+        if ev.name == :follow
+          next if ev.source.screen_name == @username
+          log "Followed by #{ev.source.screen_name}"
+          @on_follow.call(ev.source) if @on_follow
+        end
+
         next unless ev.text # If it's not a text-containing tweet, ignore it
         next if ev.user.screen_name == @username # Ignore our own tweets
 
@@ -108,7 +142,7 @@ module Ebooks
           end
         rescue Exception
           p ev.attrs[:entities][:user_mentions]
-          p ev[:text]
+          p ev.text
           raise
         end
         meta[:mentionless] = mless
@@ -126,6 +160,27 @@ module Ebooks
       end
     end
 
+    # Connects to tweetstream and opens event handlers for this bot
+    def start
+      configure
+
+      @on_startup.call if @on_startup
+
+      if not @stream
+        log "not bothering with stream for #@username"
+        return
+      end
+
+      fiber = Fiber.new do
+        start_stream
+      end
+
+      socket = fiber.resume
+
+      conn = EM.watch socket.io, FiberSocketHandler, fiber
+      conn.notify_readable = true
+    end
+
     # Wrapper for EM.add_timer
     # Delays add a greater sense of humanity to bot behaviour
     def delay(time, &b)
@@ -136,11 +191,12 @@ module Ebooks
     # Reply to a tweet or a DM.
     # Applies configurable @reply_delay range
     def reply(ev, text, opts={})
+      p "reply???"
       opts = opts.clone
 
       if ev.is_a? Twitter::DirectMessage
-        log "Sending DM to @#{ev[:sender][:screen_name]}: #{text}"
-        @twitter.direct_message_create(ev[:sender][:screen_name], text, opts)
+        log "Sending DM to @#{ev.sender.screen_name}: #{text}"
+        @twitter.create_direct_message(ev.sender.screen_name, text, opts)
       elsif ev.is_a? Twitter::Tweet
         log "Replying to @#{ev.user.screen_name} with: #{text}"
         @twitter.update(text, in_reply_to_status_id: ev.id)
