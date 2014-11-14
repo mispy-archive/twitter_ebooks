@@ -1,6 +1,7 @@
 # twitter\_ebooks 2.3.2
 
 [![Gem Version](https://badge.fury.io/rb/twitter_ebooks.svg)](http://badge.fury.io/rb/twitter_ebooks)
+[![Build Status](https://travis-ci.org/mispy/twitter_ebooks.svg)](https://travis-ci.org/mispy/twitter_ebooks)
 
 Rewrite of my twitter\_ebooks code. While the original was solely a tweeting Markov generator, this framework helps you build any kind of interactive twitterbot which responds to mentions/DMs. See [ebooks\_example](https://github.com/mispy/ebooks_example) for an example of a full bot.
 

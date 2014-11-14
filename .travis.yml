@@ -1,0 +1,11 @@
+language: ruby
+cache: bundler
+rvm:
+  - 1.9.3
+  - 2.1.4
+bundler_args: -j4 --without development production --quiet
+script:
+  - bundle exec rspec spec
+notifications:
+  email:
+    - ebooks@mispy.me
