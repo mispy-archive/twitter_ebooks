@@ -49,13 +49,56 @@ module Ebooks
   class ConfigurationError < Exception
   end
 
-  # UserInfo tracks some meta information for how much
-  # we've interacted with a user, and how much they've responded
+  # We track how many unprompted interactions the bot has had with
+  # each user and start dropping them from mentions after two in a row
   class UserInfo
-    attr_accessor :times_bugged, :times_responded
-    def initialize
-      self.times_bugged = 0
-      self.times_responded = 0
+    attr_reader :username
+    attr_accessor :pester_count
+
+    def initialize(username)
+      @username = username
+      @pester_count = 0
+    end
+
+    def can_pester?
+      @pester_count < 2
+    end
+  end
+
+  # Represents a current "interaction state" with another user
+  class Interaction
+    attr_reader :userinfo, :received, :last_update
+
+    def initialize(userinfo)
+      @userinfo = userinfo
+      @received = []
+      @last_update = Time.now
+    end
+
+    def receive(tweet)
+      @received << tweet
+      @last_update = Time.now
+      @userinfo.pester_count = 0
+    end
+
+    # Make an informed guess as to whether this user is a bot
+    # based on its username and reply speed
+    def is_bot?
+      if @received.length > 1
+        if (@received[-1].created_at - @received[-2].created_at) < 30
+          return true
+        end
+      end
+
+      @userinfo.username.include?("ebooks")
+    end
+
+    def continue?
+      if is_bot?
+        true if @received.length < 2
+      else
+        true
+      end
     end
   end
 
@@ -80,13 +123,27 @@ module Ebooks
       STDOUT.flush
     end
 
-    def initialize
+    def initialize(*args, &b)
       @username ||= nil
       @blacklist ||= []
       @delay_range ||= 0
 
       @users ||= {}
-      configure
+      @interactions ||= {}
+      configure(*args, &b)
+    end
+
+    def userinfo(username)
+      @users[username] ||= UserInfo.new(username)
+    end
+
+    def interaction(username)
+      if @interactions[username] &&
+         Time.now - @interactions[username].last_update < 600
+        @interactions[username]
+      else
+        @interactions[username] = Interaction.new(userinfo(username))
+      end
     end
 
     def make_client
@@ -112,18 +169,34 @@ module Ebooks
       meta = {}
       meta[:mentions] = ev.attrs[:entities][:user_mentions].map { |x| x[:screen_name] }
 
+      # To check if this is someone talking to us, ensure:
+      # - The tweet mentions list contains our username
+      # - The tweet is not being retweeted by somebody else
+      # - Or soft-retweeted by somebody else
+      meta[:mentions_bot] = meta[:mentions].map(&:downcase).include?(@username.downcase) && !ev.retweeted_status? && !ev.text.start_with?('RT ')
+
+      # Process mentions to figure out who to reply to
       reply_mentions = meta[:mentions].reject { |m| m.downcase == @username.downcase }
-      reply_mentions = [ev.user.screen_name] + reply_mentions
+      reply_mentions = reply_mentions.select { |username| userinfo(username).can_pester? }
+      meta[:reply_mentions] = [ev.user.screen_name] + reply_mentions
 
-      # Don't reply to more than three users at a time
-      if reply_mentions.length > 3
-        log "Truncating reply_mentions to the first three users"
-        reply_mentions = reply_mentions[0..2]
-      end
-
-      meta[:reply_prefix] = reply_mentions.uniq.map { |m| '@'+m }.join(' ') + ' '
+      meta[:reply_prefix] = meta[:reply_mentions].uniq.map { |m| '@'+m }.join(' ') + ' '
 
       meta[:limit] = 140 - meta[:reply_prefix].length
+
+      mless = ev.text
+      begin
+        ev.attrs[:entities][:user_mentions].reverse.each do |entity|
+          last = mless[entity[:indices][1]..-1]||''
+          mless = mless[0...entity[:indices][0]] + last.strip
+        end
+      rescue Exception
+        p ev.attrs[:entities][:user_mentions]
+        p ev.text
+        raise
+      end
+      meta[:mentionless] = mless
+
       meta
     end
 
@@ -150,29 +223,14 @@ module Ebooks
 
         meta = calc_meta(ev)
 
-        mless = ev.text
-        begin
-          ev.attrs[:entities][:user_mentions].reverse.each do |entity|
-            last = mless[entity[:indices][1]..-1]||''
-            mless = mless[0...entity[:indices][0]] + last.strip
-          end
-        rescue Exception
-          p ev.attrs[:entities][:user_mentions]
-          p ev.text
-          raise
-        end
-        meta[:mentionless] = mless
-
-        # To check if this is a mention, ensure:
-        # - The tweet mentions list contains our username
-        # - The tweet is not being retweeted by somebody else
-        # - Or soft-retweeted by somebody else
-        if meta[:mentions].map(&:downcase).include?(@username.downcase) && !ev.retweeted_status? && !ev.text.start_with?('RT ')
+        if meta[:mentions_bot]
           log "Mention from @#{ev.user.screen_name}: #{ev.text}"
+          interaction(ev.user.screen_name).receive(ev)
           fire(:mention, ev, meta)
         else
           fire(:timeline, ev, meta)
         end
+
       elsif ev.is_a? Twitter::Streaming::DeletedTweet
         # pass
       else
@@ -242,9 +300,20 @@ module Ebooks
       elsif ev.is_a? Twitter::Tweet
         meta = calc_meta(ev)
 
-        return if blacklisted?(ev.user.screen_name)
-        log "Replying to @#{ev.user.screen_name} with: #{text}"
+        if blacklisted?(ev.user.screen_name)
+          log "Not replying to blacklisted user @#{ev.user.screen_name}"
+          return
+        elsif !interaction(ev.user.screen_name).continue?
+          log "Not replying to suspected bot @#{ev.user.screen_name}"
+          return
+        end
+
+        log "Replying to @#{ev.user.screen_name} with: #{meta[:reply_prefix] + text}"
         @twitter.update(meta[:reply_prefix] + text, in_reply_to_status_id: ev.id)
+
+        meta[:reply_mentions].each do |username|
+          userinfo(username).pester_count += 1
+        end
       else
         raise Exception("Don't know how to reply to a #{ev.class}")
       end
