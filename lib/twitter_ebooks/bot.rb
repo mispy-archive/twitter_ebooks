@@ -258,6 +258,11 @@ module Ebooks
           return
         end
 
+        if !meta[:mentions_bot] && !userinfo(ev.user.screen_name).can_pester?
+          log "Already pestered @#{ev.user.screen_name} enough for now"
+          return
+        end
+
         log "Replying to @#{ev.user.screen_name} with: #{meta[:reply_prefix] + text}"
         @twitter.update(meta[:reply_prefix] + text, in_reply_to_status_id: ev.id)
 
