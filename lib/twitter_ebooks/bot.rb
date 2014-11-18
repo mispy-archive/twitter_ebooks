@@ -41,8 +41,8 @@ module Ebooks
     # Make an informed guess as to whether this user is a bot
     # based on its username and reply speed
     def is_bot?
-      if @received.length > 1
-        if (@received[-1].created_at - @received[-2].created_at) < 30
+      if @received.length > 2
+        if (@received[-1].created_at - @received[-3].created_at) < 30
           return true
         end
       end
