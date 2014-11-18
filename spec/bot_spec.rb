@@ -148,4 +148,12 @@ describe Ebooks::Bot do
       expect(bot.twitter).to_not have_received(:update)
     end
   end
+
+  it "blocks blacklisted users on contact" do
+    simulate(bot) do
+      bot.blacklist = ["spammer"]
+      bot.receive_event(mock_tweet("spammer", "@test_ebooks @m1sp 7"))
+      expect(bot.twitter).to have_received(:block).with("spammer")
+    end
+  end
 end

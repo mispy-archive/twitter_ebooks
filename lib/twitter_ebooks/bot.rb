@@ -178,6 +178,11 @@ module Ebooks
 
         meta = calc_meta(ev)
 
+        if blacklisted?(ev.user.screen_name)
+          log "Blocking blacklisted user @#{ev.user.screen_name}"
+          @twitter.block(ev.user.screen_name)
+        end
+
         if meta[:mentions_bot]
           log "Mention from @#{ev.user.screen_name}: #{ev.text}"
           interaction(ev.user.screen_name).receive(ev)
@@ -186,7 +191,8 @@ module Ebooks
           fire(:timeline, ev, meta)
         end
 
-      elsif ev.is_a? Twitter::Streaming::DeletedTweet
+      elsif ev.is_a?(Twitter::Streaming::DeletedTweet) ||
+            ev.is_a?(Twitter::Streaming::Event)
         # pass
       else
         log ev
@@ -223,16 +229,13 @@ module Ebooks
       end
     end
 
-    # Wrapper for EM.add_timer
-    # Delays add a greater sense of humanity to bot behaviour
     def delay(&b)
       time = @delay.to_a.sample unless @delay.is_a? Integer
-      EM.add_timer(time, &b)
+      sleep time
     end
 
     def blacklisted?(username)
       if @blacklist.include?(username)
-        log "Saw scary blacklisted user @#{username}"
         true
       else
         false
@@ -250,10 +253,7 @@ module Ebooks
       elsif ev.is_a? Twitter::Tweet
         meta = calc_meta(ev)
 
-        if blacklisted?(ev.user.screen_name)
-          log "Not replying to blacklisted user @#{ev.user.screen_name}"
-          return
-        elsif !interaction(ev.user.screen_name).continue?
+        if !interaction(ev.user.screen_name).continue?
           log "Not replying to suspected bot @#{ev.user.screen_name}"
           return
         end
