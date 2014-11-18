@@ -10,15 +10,15 @@ module Ebooks
   # each user and start dropping them from mentions after two in a row
   class UserInfo
     attr_reader :username
-    attr_accessor :pester_count
+    attr_accessor :pesters_left
 
     def initialize(username)
       @username = username
-      @pester_count = 0
+      @pesters_left = 1
     end
 
     def can_pester?
-      @pester_count < 2
+      @pesters_left > 0
     end
   end
 
@@ -35,7 +35,7 @@ module Ebooks
     def receive(tweet)
       @received << tweet
       @last_update = Time.now
-      @userinfo.pester_count = 0
+      @userinfo.pesters_left += 2
     end
 
     # Make an informed guess as to whether this user is a bot
@@ -88,6 +88,9 @@ module Ebooks
       @users ||= {}
       @interactions ||= {}
       configure(*args, &b)
+
+      # Tweet ids we've already observed, to avoid duplication
+      @seen_tweets ||= {}
     end
 
     def userinfo(username)
@@ -103,15 +106,17 @@ module Ebooks
       end
     end
 
-    def make_client
-      @twitter = Twitter::REST::Client.new do |config|
+    def twitter
+      @twitter ||= Twitter::REST::Client.new do |config|
         config.consumer_key = @consumer_key
         config.consumer_secret = @consumer_secret
         config.access_token = @access_token
         config.access_token_secret = @access_token_secret
       end
+    end
 
-      @stream = Twitter::Streaming::Client.new do |config|
+    def stream
+      @stream ||= Twitter::Streaming::Client.new do |config|
         config.consumer_key = @consumer_key
         config.consumer_secret = @consumer_secret
         config.access_token = @access_token
@@ -183,6 +188,13 @@ module Ebooks
           @twitter.block(ev.user.screen_name)
         end
 
+        # Avoid responding to duplicate tweets
+        if @seen_tweets[ev.id]
+          return
+        else
+          @seen_tweets[ev.id] = true
+        end
+
         if meta[:mentions_bot]
           log "Mention from @#{ev.user.screen_name}: #{ev.text}"
           interaction(ev.user.screen_name).receive(ev)
@@ -201,7 +213,8 @@ module Ebooks
 
     def start_stream
       log "starting tweet stream"
-      @stream.user do |ev|
+
+      stream.user do |ev|
         receive_event ev
       end
     end
@@ -212,7 +225,7 @@ module Ebooks
         raise ConfigurationError, "bot.username cannot be nil"
       end
 
-      make_client
+      twitter
       fire(:startup)
     end
 
@@ -249,7 +262,7 @@ module Ebooks
       if ev.is_a? Twitter::DirectMessage
         return if blacklisted?(ev.sender.screen_name)
         log "Sending DM to @#{ev.sender.screen_name}: #{text}"
-        @twitter.create_direct_message(ev.sender.screen_name, text, opts)
+        twitter.create_direct_message(ev.sender.screen_name, text, opts)
       elsif ev.is_a? Twitter::Tweet
         meta = calc_meta(ev)
 
@@ -258,17 +271,17 @@ module Ebooks
           return
         end
 
-        if !meta[:mentions_bot] && !userinfo(ev.user.screen_name).can_pester?
-          log "Already pestered @#{ev.user.screen_name} enough for now"
-          return
+        if !meta[:mentions_bot]
+          if !userinfo(ev.user.screen_name).can_pester?
+            log "Not replying: leaving @#{ev.user.screen_name} alone"
+            return
+          else
+            userinfo(ev.user.screen_name).pesters_left -= 1
+          end
         end
 
         log "Replying to @#{ev.user.screen_name} with: #{meta[:reply_prefix] + text}"
-        @twitter.update(meta[:reply_prefix] + text, in_reply_to_status_id: ev.id)
-
-        meta[:reply_mentions].each do |username|
-          userinfo(username).pester_count += 1
-        end
+        twitter.update(meta[:reply_prefix] + text, in_reply_to_status_id: ev.id)
       else
         raise Exception("Don't know how to reply to a #{ev.class}")
       end
@@ -278,8 +291,13 @@ module Ebooks
       return if blacklisted?(tweet.user.screen_name)
       log "Favoriting @#{tweet.user.screen_name}: #{tweet.text}"
 
+      meta = calc_meta(tweet)
+      if !meta[:mentions_bot] && !userinfo(ev.user.screen_name).can_pester?
+        log "Not favoriting: leaving @#{ev.user.screen_name} alone"
+      end
+
       begin
-        @twitter.favorite(tweet.id)
+        twitter.favorite(tweet.id)
       rescue Twitter::Error::Forbidden
         log "Already favorited: #{tweet.user.screen_name}: #{tweet.text}"
       end
@@ -290,7 +308,7 @@ module Ebooks
       log "Retweeting @#{tweet.user.screen_name}: #{tweet.text}"
 
       begin
-        @twitter.retweet(tweet.id)
+        twitter.retweet(tweet.id)
       rescue Twitter::Error::Forbidden
         log "Already retweeted: #{tweet.user.screen_name}: #{tweet.text}"
       end
@@ -298,13 +316,12 @@ module Ebooks
 
     def follow(*args)
       log "Following #{args}"
-
-      @twitter.follow(*args)
+      twitter.follow(*args)
     end
 
     def tweet(*args)
       log "Tweeting #{args.inspect}"
-      @twitter.update(*args)
+      twitter.update(*args)
     end
 
     def scheduler
@@ -314,7 +331,7 @@ module Ebooks
     # could easily just be *args however the separation keeps it clean.
     def pictweet(txt, pic, *args)
       log "Tweeting #{txt.inspect} - #{pic} #{args}"
-      @twitter.update_with_media(txt, File.new(pic), *args)
+      twitter.update_with_media(txt, File.new(pic), *args)
     end
   end
 end

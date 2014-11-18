@@ -163,49 +163,9 @@ STR
     bot.tweet(statement)
   end
 
-  def self.jsonify(paths)
-    usage = <<STR
-Usage: ebooks jsonify <old_corpus_path> [old_corpus_path2] [...]
-
-Takes an old-style corpus of plain tweet text and converts it to json.
-STR
-
-    if paths.empty?
-      log usage
-      exit
-    end
-
-    paths.each do |path|
-      name = File.basename(path).split('.')[0]
-      new_path = name + ".json"
-
-      tweets = []
-      id = nil
-      if path.split('.')[-1] == "csv" #from twitter archive
-        csv_archive = CSV.read(path, :headers=>:first_row)
-        tweets = csv_archive.map do |tweet|
-          { text: tweet['text'], id: tweet['tweet_id'] }
-        end
-      else
-        File.read(path).split("\n").each do |l|
-          if l.start_with?('# ')
-            id = l.split('# ')[-1]
-          else
-            tweet = { text: l }
-            if id
-              tweet[:id] = id
-              id = nil
-            end
-            tweets << tweet
-          end
-        end
-      end
-
-      File.open(new_path, 'w') do |f|
-        log "Writing #{tweets.length} tweets to #{new_path}"
-        f.write(JSON.pretty_generate(tweets))
-      end
-    end
+  def self.c
+    load 'bots.rb'
+    require 'pry'; pry
   end
 
   def self.command(args)
@@ -218,7 +178,6 @@ Usage:
      ebooks score <model_path> <input>
      ebooks archive <@user> <outpath>
      ebooks tweet <model_path> <botname>
-     ebooks jsonify <old_corpus_path> [old_corpus_path2] [...]
 STR
 
     if args.length == 0
@@ -235,6 +194,7 @@ STR
     when "archive" then archive(args[1], args[2])
     when "tweet" then tweet(args[1], args[2])
     when "jsonify" then jsonify(args[1..-1])
+    when "c" then c
     else
       log usage
       exit 1
