@@ -4,14 +4,33 @@
 require 'json'
 require 'set'
 require 'digest/md5'
+require 'fileutils'
 require 'csv'
 
 module Ebooks
   class Model
     attr_accessor :hash, :tokens, :sentences, :mentions, :keywords
 
-    def self.consume(txtpath)
-      Model.new.consume(txtpath)
+    # Consume a corpus file to create a model
+    # @param corpus_path Path to a json, text or csv file to consume
+    # @param cache Optional path to a directory to store cached models
+    def self.consume(corpus_path, cache: nil)
+      if cache
+        FileUtils::mkdir_p cache
+
+        cache_path = File.join(cache, Digest::MD5.file(corpus_path).to_s)
+        if File.exists?(cache_path)
+          log "Reading model from cache at #{cache_path}"
+          return Model.load(cache_path)
+        end
+      end
+
+      model = Model.new.consume(corpus_path)
+
+      if cache
+        log "Caching model at #{cache_path}"
+        model.save(cache_path)
+      end
     end
 
     def self.consume_all(paths)

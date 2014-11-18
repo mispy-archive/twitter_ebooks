@@ -1,7 +1,7 @@
 $debug = false
 
 def log(*args)
-  STDERR.puts args.map(&:to_s).join(' ')
+  STDERR.print args.map(&:to_s).join(' ') + "\n"
   STDERR.flush
 end
 

@@ -1,51 +1,8 @@
-#!/usr/bin/env ruby
 # encoding: utf-8
 require 'twitter'
 require 'rufus/scheduler'
-require 'eventmachine'
 
 module Ebooks
-  # Wrap SSLSocket so that readpartial yields the fiber instead of
-  # blocking when there is no data
-  #
-  # We hand this to the twitter library so we can select on the sockets
-  # and thus run multiple streams without them blocking
-  class FiberSSLSocket
-    def initialize(*args)
-      @socket = OpenSSL::SSL::SSLSocket.new(*args)
-    end
-
-    def readpartial(maxlen)
-      data = ""
-
-      loop do
-        begin
-          data = @socket.read_nonblock(maxlen)
-        rescue IO::WaitReadable
-        end
-        break if data.length > 0
-        Fiber.yield(@socket)
-      end
-
-      data
-    end
-
-    def method_missing(m, *args)
-      @socket.send(m, *args)
-    end
-  end
-
-  # An EventMachine handler which resumes a fiber on incoming data
-  class FiberSocketHandler < EventMachine::Connection
-    def initialize(fiber)
-      @fiber = fiber
-    end
-
-    def notify_readable
-      @fiber.resume
-    end
-  end
-
   class ConfigurationError < Exception
   end
 
@@ -106,7 +63,7 @@ module Ebooks
     attr_accessor :consumer_key, :consumer_secret,
                   :access_token, :access_token_secret
 
-    attr_reader :twitter, :stream
+    attr_reader :twitter, :stream, :thread
 
     # Configuration
     attr_accessor :username, :delay_range, :blacklist
@@ -119,7 +76,7 @@ module Ebooks
     end
 
     def log(*args)
-      STDOUT.puts "@#{@username}: " + args.map(&:to_s).join(' ')
+      STDOUT.print "@#{@username}: " + args.map(&:to_s).join(' ') + "\n"
       STDOUT.flush
     end
 
@@ -154,9 +111,7 @@ module Ebooks
         config.access_token_secret = @access_token_secret
       end
 
-      @stream = Twitter::Streaming::Client.new(
-        ssl_socket_class: FiberSSLSocket
-      ) do |config|
+      @stream = Twitter::Streaming::Client.new do |config|
         config.consumer_key = @consumer_key
         config.consumer_secret = @consumer_secret
         config.access_token = @access_token
@@ -239,14 +194,13 @@ module Ebooks
     end
 
     def start_stream
-      log "starting stream for #@username"
+      log "starting tweet stream"
       @stream.user do |ev|
         receive_event ev
       end
     end
 
-    # Connects to tweetstream and opens event handlers for this bot
-    def start
+    def prepare
       # Sanity check
       if @username.nil?
         raise ConfigurationError, "bot.username cannot be nil"
@@ -254,15 +208,11 @@ module Ebooks
 
       make_client
       fire(:startup)
+    end
 
-      fiber = Fiber.new do
-        start_stream
-      end
-
-      socket = fiber.resume
-
-      conn = EM.watch socket.io, FiberSocketHandler, fiber
-      conn.notify_readable = true
+    # Connects to tweetstream and opens event handlers for this bot
+    def start
+      start_stream
     end
 
     # Fire an event
