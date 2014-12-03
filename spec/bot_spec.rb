@@ -17,7 +17,7 @@ class TestBot < Ebooks::Bot
   end
 
   def on_mention(tweet, meta)
-    reply tweet, "echo: #{meta[:mentionless]}"
+    reply tweet, "echo: #{meta.mentionless}"
   end
 
   def on_timeline(tweet, meta)

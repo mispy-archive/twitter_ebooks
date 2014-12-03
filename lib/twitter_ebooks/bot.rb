@@ -6,19 +6,27 @@ module Ebooks
   class ConfigurationError < Exception
   end
 
-  # We track how many unprompted interactions the bot has had with
-  # each user and start dropping them from mentions after two in a row
   class UserInfo
     attr_reader :username
+
+    # number of times we've interacted with a timeline tweet, unprompted
     attr_accessor :pesters_left
+
+    # number of times we've included them in a mention that wasn't from them
+    attr_accessor :includes_left
 
     def initialize(username)
       @username = username
       @pesters_left = 1
+      @includes_left = 2
     end
 
     def can_pester?
       @pesters_left > 0
+    end
+
+    def can_include?
+      @includes_left > 0
     end
   end
 
@@ -35,7 +43,11 @@ module Ebooks
     def receive(tweet)
       @received << tweet
       @last_update = Time.now
-      @userinfo.pesters_left += 2
+
+      # When we receive a tweet from someone, become more
+      # inclined to pester them and include in mentions
+      @userinfo.pesters_left += 1
+      @userinfo.includes_left += 2
     end
 
     # Make an informed guess as to whether this user is a bot
@@ -56,6 +68,56 @@ module Ebooks
       else
         true
       end
+    end
+  end
+
+  # Meta information about a tweet that we calculate for ourselves
+  class TweetMeta
+    attr_accessor :mentions # array: usernames mentioned in tweet
+    attr_accessor :mentionless # string: text of tweet with mentions removed
+    attr_accessor :reply_mentions # array: usernames to include in a reply
+    attr_accessor :reply_prefix # string: processed string to start reply with
+    attr_accessor :limit # integer: available room to calculate reply
+
+    attr_accessor :bot, :tweet
+
+    def mentions_bot?
+      # To check if this is someone talking to us, ensure:
+      # - The tweet mentions list contains our username
+      # - The tweet is not being retweeted by somebody else
+      # - Or soft-retweeted by somebody else
+      @mentions.map(&:downcase).include?(@bot.username.downcase) && !@tweet.retweeted_status? && !@tweet.text.start_with?('RT ')
+    end
+
+    def initialize(bot, ev)
+      @bot = bot
+      @tweet = ev
+
+      @mentions = ev.attrs[:entities][:user_mentions].map { |x| x[:screen_name] }
+
+      # Process mentions to figure out who to reply to
+      # i.e. not self and nobody who has seen too many secondary mentions
+      reply_mentions = @mentions.reject do |m|
+        username = m.downcase
+        username == @bot.username || !@bot.userinfo(username).can_include?
+      end
+      @reply_mentions = ([ev.user.screen_name] + reply_mentions).uniq
+
+      @reply_prefix = @reply_mentions.map { |m| '@'+m }.join(' ') + ' '
+      @limit = 140 - @reply_prefix.length
+
+      mless = ev.text
+      begin
+        ev.attrs[:entities][:user_mentions].reverse.each do |entity|
+          last = mless[entity[:indices][1]..-1]||''
+          mless = mless[0...entity[:indices][0]] + last.strip
+        end
+      rescue Exception
+        p ev.attrs[:entities][:user_mentions]
+        p ev.text
+        raise
+      end
+      @mentionless = mless
     end
   end
 
@@ -126,38 +188,7 @@ module Ebooks
 
     # Calculate some meta information about a tweet relevant for replying
     def calc_meta(ev)
-      meta = {}
-      meta[:mentions] = ev.attrs[:entities][:user_mentions].map { |x| x[:screen_name] }
-
-      # To check if this is someone talking to us, ensure:
-      # - The tweet mentions list contains our username
-      # - The tweet is not being retweeted by somebody else
-      # - Or soft-retweeted by somebody else
-      meta[:mentions_bot] = meta[:mentions].map(&:downcase).include?(@username.downcase) && !ev.retweeted_status? && !ev.text.start_with?('RT ')
-
-      # Process mentions to figure out who to reply to
-      reply_mentions = meta[:mentions].reject { |m| m.downcase == @username.downcase }
-      reply_mentions = reply_mentions.select { |username| userinfo(username).can_pester? }
-      meta[:reply_mentions] = [ev.user.screen_name] + reply_mentions
-
-      meta[:reply_prefix] = meta[:reply_mentions].uniq.map { |m| '@'+m }.join(' ') + ' '
-
-      meta[:limit] = 140 - meta[:reply_prefix].length
-
-      mless = ev.text
-      begin
-        ev.attrs[:entities][:user_mentions].reverse.each do |entity|
-          last = mless[entity[:indices][1]..-1]||''
-          mless = mless[0...entity[:indices][0]] + last.strip
-        end
-      rescue Exception
-        p ev.attrs[:entities][:user_mentions]
-        p ev.text
-        raise
-      end
-      meta[:mentionless] = mless
-
-      meta
+      TweetMeta.new(self, ev)
     end
 
     # Receive an event from the twitter stream
@@ -195,7 +226,7 @@ module Ebooks
           @seen_tweets[ev.id] = true
         end
 
-        if meta[:mentions_bot]
+        if meta.mentions_bot?
           log "Mention from @#{ev.user.screen_name}: #{ev.text}"
           interaction(ev.user.screen_name).receive(ev)
           fire(:mention, ev, meta)
@@ -271,17 +302,23 @@ module Ebooks
           return
         end
 
-        if !meta[:mentions_bot]
+        if !meta.mentions_bot?
           if !userinfo(ev.user.screen_name).can_pester?
             log "Not replying: leaving @#{ev.user.screen_name} alone"
             return
-          else
-            userinfo(ev.user.screen_name).pesters_left -= 1
           end
         end
 
-        log "Replying to @#{ev.user.screen_name} with: #{meta[:reply_prefix] + text}"
-        twitter.update(meta[:reply_prefix] + text, in_reply_to_status_id: ev.id)
+        meta.reply_mentions.each do |username|
+          # Decrease includes_left for everyone involved here who isn't
+          # directly talking to the bot
+          if !meta.mentions_bot? || username != ev.user.screen_name
+            userinfo(username).includes_left -= 1
+          end
+        end
+
+        log "Replying to @#{ev.user.screen_name} with: #{meta.reply_prefix + text}"
+        twitter.update(meta.reply_prefix + text, in_reply_to_status_id: ev.id)
       else
         raise Exception("Don't know how to reply to a #{ev.class}")
       end
@@ -292,9 +329,9 @@ module Ebooks
       log "Favoriting @#{tweet.user.screen_name}: #{tweet.text}"
 
       meta = calc_meta(tweet)
-      if !meta[:mentions_bot] && !userinfo(ev.user.screen_name).can_pester?
-        log "Not favoriting: leaving @#{ev.user.screen_name} alone"
-      end
+      #if !meta[:mentions_bot] && !userinfo(ev.user.screen_name).can_pester?
+      #  log "Not favoriting: leaving @#{ev.user.screen_name} alone"
+      #end
 
       begin
         twitter.favorite(tweet.id)
@@ -317,6 +354,11 @@ module Ebooks
     def follow(*args)
       log "Following #{args}"
       twitter.follow(*args)
+    end
+
+    def unfollow(*args)
+      log "Unfollowing #{args}"
+      twiter.unfollow(*args)
     end
 
     def tweet(*args)
