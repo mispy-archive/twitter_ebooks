@@ -13,11 +13,11 @@ class TestBot < Ebooks::Bot
     reply dm, "echo: #{dm.text}"
   end
 
-  def on_mention(tweet, meta)
-    reply tweet, "echo: #{meta.mentionless}"
+  def on_mention(tweet)
+    reply tweet, "echo: #{meta(tweet).mentionless}"
   end
 
-  def on_timeline(tweet, meta)
+  def on_timeline(tweet)
     reply tweet, "fine tweet good sir"
   end
 end
