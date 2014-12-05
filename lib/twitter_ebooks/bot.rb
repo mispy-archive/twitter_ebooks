@@ -153,6 +153,7 @@ module Ebooks
 
       # Tweet ids we've already observed, to avoid duplication
       @seen_tweets ||= {}
+      Bot.all << self
     end
 
     def userinfo(username)

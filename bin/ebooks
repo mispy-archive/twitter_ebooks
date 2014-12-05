@@ -6,7 +6,7 @@ require 'csv'
 
 $debug = true
 
-module Ebooks
+module Ebooks::CLI
   APP_PATH = Dir.pwd # XXX do some recursive thing instead
 
   def self.new(reponame)
@@ -163,9 +163,82 @@ STR
     bot.tweet(statement)
   end
 
+  def self.auth
+    consumer_key, consumer_secret = find_consumer
+    require 'oauth'
+
+    consumer = OAuth::Consumer.new(
+      consumer_key,
+      consumer_secret,
+      site: 'https://twitter.com/',
+      scheme: :header
+    )
+
+    request_token = consumer.get_request_token
+    auth_url = request_token.authorize_url()
+
+    pin = nil
+    loop do
+      log auth_url
+
+      log "Go to the above url and follow the prompts, then enter the PIN code here."
+      print "> "
+
+      pin = STDIN.gets.chomp
+
+      break unless pin.empty?
+    end
+
+    access_token = request_token.get_access_token(oauth_verifier: pin)
+
+    log "Account authorized successfully.\n" +
+         "  access token: #{access_token.token}\n" +
+         "  access token secret: #{access_token.secret}"
+  end
+
   def self.c
-    load 'bots.rb'
+    load_bots
     require 'pry'; pry
+  end
+
+  # Non-command methods
+
+  def self.find_consumer
+    if ENV['CONSUMER_KEY'] && ENV['CONSUMER_SECRET']
+      log "Using consumer details from environment variables:\n" +
+          "  consumer key: #{ENV['CONSUMER_KEY']}\n" +
+          "  consumer secret: #{ENV['CONSUMER_SECRET']}"
+      return [ENV['CONSUMER_KEY'], ENV['CONSUMER_SECRET']]
+    end
+
+    load_bots
+    consumer_key = nil
+    consumer_secret = nil
+    Ebooks::Bot.all.each do |bot|
+      if bot.consumer_key && bot.consumer_secret
+        consumer_key = bot.consumer_key
+        consumer_secret = bot.consumer_secret
+        log "Using consumer details from @#{bot.username}:\n" +
+            "  consumer key: #{bot.consumer_key}\n" +
+            "  consumer secret: #{bot.consumer_secret}\n"
+        return consumer_key, consumer_secret
+      end
+    end
+
+    if consumer_key.nil? || consumer_secret.nil?
+      log "Couldn't find any consumer details to auth an account with.\n" +
+          "Please either configure a bot with consumer_key and consumer_secret\n" +
+          "or provide the CONSUMER_KEY and CONSUMER_SECRET environment variables."
+      exit
+    end
+  end
+
+  def self.load_bots
+    load 'bots.rb'
+
+    if Ebooks::Bot.all.empty?
+      puts "Couldn't find any bots! Please make sure bots.rb instantiates at least one bot."
+    end
   end
 
   def self.command(args)
@@ -194,6 +267,7 @@ STR
     when "archive" then archive(args[1], args[2])
     when "tweet" then tweet(args[1], args[2])
     when "jsonify" then jsonify(args[1..-1])
+    when "auth" then auth
     when "c" then c
     else
       log usage
@@ -202,4 +276,4 @@ STR
   end
 end
 
-Ebooks.command(ARGV)
+Ebooks::CLI.command(ARGV)

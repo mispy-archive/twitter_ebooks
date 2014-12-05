@@ -4,8 +4,13 @@
 [![Build Status](https://travis-ci.org/mispy/twitter_ebooks.svg)](https://travis-ci.org/mispy/twitter_ebooks)
 [![Dependency Status](https://gemnasium.com/mispy/twitter_ebooks.svg)](https://gemnasium.com/mispy/twitter_ebooks)
 
+A framework for building interactive twitterbots which respond to mentions/DMs. twitter_ebooks tries to be a good friendly bot citizen by avoiding infinite conversations and spamming people, so you only have to write the interesting parts.
 
-Rewrite of my twitter\_ebooks code. While the original was solely a tweeting Markov generator, this framework helps you build any kind of interactive twitterbot which responds to mentions/DMs. See [ebooks\_example](https://github.com/mispy/ebooks_example) for an example of a full bot.
+## New in 3.0
+
+- Bots now run in their own threads (no eventmachine), and startup is parallelized
+- Replies are slightly rate-limited by default to prevent infinite bot convos
+- Non-participating users in a mention chain will be dropped after a few tweets
 
 ## Installation
 
@@ -65,9 +70,9 @@ Ebooks::Bot.new("abby_ebooks") do |bot|
 end
 ```
 
-Bots defined like this can be spawned by executing `run.rb` in the same directory, and will operate together in a single eventmachine loop. The easiest way to run bots in a semi-permanent fashion is with [Heroku](https://www.heroku.com); just make an app, push the bot repository to it, enable a worker process in the web interface and it ought to chug along merrily forever.
+'ebooks start' will run all defined bots in their own threads. The easiest way to run bots in a semi-permanent fashion is with [Heroku](https://www.heroku.com); just make an app, push the bot repository to it, enable a worker process in the web interface and it ought to chug along merrily forever.
 
-The underlying [tweetstream](https://github.com/tweetstream/tweetstream) and [twitter gem](https://github.com/sferik/twitter) client objects can be accessed at `bot.stream` and `bot.twitter` respectively.
+The underlying streaming and REST clients from the [twitter gem](https://github.com/sferik/twitter) can be accessed at `bot.stream` and `bot.twitter` respectively.
 
 ## Archiving accounts
 
