@@ -54,29 +54,29 @@ class MyBot < Ebooks::Bot
     scheduler.every '24h' do
       # Tweet something every 24 hours
       # See https://github.com/jmettraux/rufus-scheduler
-      # bot.tweet("hi")
-      # bot.pictweet("hi", "cuteselfie.jpg")
+      # tweet("hi")
+      # pictweet("hi", "cuteselfie.jpg")
     end
   end
 
   def on_message(dm)
     # Reply to a DM
-    # bot.reply(dm, "secret secrets")
+    # reply(dm, "secret secrets")
   end
 
   def on_follow(user)
     # Follow a user back
-    # bot.follow(user[:screen_name])
+    # follow(user[:screen_name])
   end
 
   def on_mention(tweet)
     # Reply to a mention
-    # bot.reply(tweet, meta(tweet)[:reply_prefix] + "oh hullo")
+    # reply(tweet, meta(tweet)[:reply_prefix] + "oh hullo")
   end
 
   def on_timeline(tweet)
     # Reply to a tweet in the bot's timeline
-    # bot.reply(tweet, meta(tweet)[:reply_prefix] + "nice tweet")
+    # reply(tweet, meta(tweet)[:reply_prefix] + "nice tweet")
   end
 end
 
