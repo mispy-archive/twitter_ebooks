@@ -3,8 +3,6 @@ require 'memory_profiler'
 require 'tempfile'
 require 'timecop'
 
-def Process.rss; `ps -o rss= -p #{Process.pid}`.chomp.to_i; end
-
 class TestBot < Ebooks::Bot
   attr_accessor :twitter
 

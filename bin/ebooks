@@ -4,8 +4,6 @@
 require 'twitter_ebooks'
 require 'ostruct'
 
-$debug = true
-
 module Ebooks::CLI
   APP_PATH = Dir.pwd # XXX do some recursive thing instead
   HELP = OpenStruct.new

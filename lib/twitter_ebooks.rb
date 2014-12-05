@@ -15,7 +15,6 @@ end
 
 require 'twitter_ebooks/nlp'
 require 'twitter_ebooks/archive'
-require 'twitter_ebooks/markov'
 require 'twitter_ebooks/suffix'
 require 'twitter_ebooks/model'
 require 'twitter_ebooks/bot'

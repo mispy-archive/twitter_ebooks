@@ -1,3 +1,5 @@
 .*.swp
 Gemfile.lock
 pkg
+.yardoc
+doc
