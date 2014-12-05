@@ -73,10 +73,16 @@ module Ebooks
 
       loop do
         opts[:max_id] = max_id unless max_id.nil?
-        new = @client.user_timeline(@username, opts)
+        begin
+          new = @client.user_timeline(@username, opts)
+        rescue Twitter::Error::TooManyRequests
+          log "Rate limit exceeded. Waiting for 5 mins before retry."
+          sleep 60*5
+          retry
+        end
         break if new.length <= 1
         tweets += new
-        puts "Received #{tweets.length} new tweets"
+        log "Received #{tweets.length} new tweets"
         max_id = new.last.id
       end
 
