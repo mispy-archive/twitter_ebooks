@@ -254,7 +254,7 @@ STR
     if botname.nil?
       bots = Ebooks::Bot.all
     else
-      bots = bots.select { |bot| bot.username == botname }
+      bots = Ebooks::Bot.all.select { |bot| bot.username == botname }
       if bots.empty?
         log "Couldn't find a defined bot for @#{botname}!"
         exit 1
@@ -343,8 +343,8 @@ STR
     when "auth" then auth
     when "console" then console
     when "c" then console
-    when "start" then start
-    when "s" then start
+    when "start" then start(args[1])
+    when "s" then start(args[1])
     when "help" then help(args[1])
     else
       log "No such command '#{args[0]}'"
