@@ -26,7 +26,7 @@ module Ebooks
     # Make an informed guess as to whether a user is a bot based
     # on their behavior in this conversation
     def is_bot?(username)
-      usertweets = @tweets.select { |t| t.user.screen_name == username }
+      usertweets = @tweets.select { |t| t.user.screen_name.downcase == username.downcase }
 
       if usertweets.length > 2
         if (usertweets[-1].created_at - usertweets[-3].created_at) < 30
@@ -41,7 +41,7 @@ module Ebooks
     # We want to avoid spamming non-participating users
     def can_include?(username)
       @tweets.length <= 4 ||
-        !@tweets[-4..-1].select { |t| t.user.screen_name == username }.empty?
+        !@tweets[-4..-1].select { |t| t.user.screen_name.downcase == username.downcase }.empty?
     end
   end
 
@@ -220,18 +220,18 @@ module Ebooks
       end
 
       if ev.is_a? Twitter::DirectMessage
-        return if ev.sender.screen_name == @username # Don't reply to self
+        return if ev.sender.screen_name.downcase == @username.downcase # Don't reply to self
         log "DM from @#{ev.sender.screen_name}: #{ev.text}"
         fire(:direct_message, ev)
 
       elsif ev.respond_to?(:name) && ev.name == :follow
-        return if ev.source.screen_name == @username
+        return if ev.source.screen_name.downcase == @username.downcase
         log "Followed by #{ev.source.screen_name}"
         fire(:follow, ev.source)
 
       elsif ev.is_a? Twitter::Tweet
         return unless ev.text # If it's not a text-containing tweet, ignore it
-        return if ev.user.screen_name == @username # Ignore our own tweets
+        return if ev.user.screen_name.downcase == @username.downcase # Ignore our own tweets
 
         meta = meta(ev)
 
@@ -283,7 +283,13 @@ module Ebooks
         exit 1
       end
 
-      twitter
+      real_name = twitter.user.screen_name
+
+      if real_name != @username
+        log "connected to @#{real_name}-- please update config to match Twitter account name"
+        @username = real_name
+      end
+
       fire(:startup)
     end
 
@@ -318,7 +324,7 @@ module Ebooks
     # @param username [String]
     # @return [Boolean]
     def blacklisted?(username)
-      if @blacklist.include?(username)
+      if @blacklist.map(&:downcase).include?(username.downcase)
         true
       else
         false
