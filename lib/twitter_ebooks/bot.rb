@@ -6,143 +6,91 @@ module Ebooks
   class ConfigurationError < Exception
   end
 
-  # We track how many unprompted interactions the bot has had with
-  # each user and start dropping them from mentions after two in a row
-  class UserInfo
-    attr_reader :username
-    attr_accessor :pesters_left
+  # Represents a single reply tree of tweets
+  class Conversation
+    attr_reader :last_update
 
-    def initialize(username)
-      @username = username
-      @pesters_left = 1
-    end
-
-    def can_pester?
-      @pesters_left > 0
-    end
-  end
-
-  # Represents a current "interaction state" with another user
-  class Interaction
-    attr_reader :userinfo, :received, :last_update
-
-    def initialize(userinfo)
-      @userinfo = userinfo
-      @received = []
+    # @param bot [Ebooks::Bot]
+    def initialize(bot)
+      @bot = bot
+      @tweets = []
       @last_update = Time.now
     end
 
-    def receive(tweet)
-      @received << tweet
+    # @param tweet [Twitter::Tweet] tweet to add
+    def add(tweet)
+      @tweets << tweet
       @last_update = Time.now
-      @userinfo.pesters_left += 2
     end
 
-    # Make an informed guess as to whether this user is a bot
-    # based on its username and reply speed
-    def is_bot?
-      if @received.length > 2
-        if (@received[-1].created_at - @received[-3].created_at) < 30
+    # Make an informed guess as to whether a user is a bot based
+    # on their behavior in this conversation
+    def is_bot?(username)
+      usertweets = @tweets.select { |t| t.user.screen_name == username }
+
+      if usertweets.length > 2
+        if (usertweets[-1].created_at - usertweets[-3].created_at) < 30
           return true
         end
       end
 
-      @userinfo.username.include?("ebooks")
+      username.include?("ebooks")
     end
 
-    def continue?
-      if is_bot?
-        true if @received.length < 2
-      else
-        true
-      end
+    # Figure out whether to keep this user in the reply prefix
+    # We want to avoid spamming non-participating users
+    def can_include?(username)
+      @tweets.length <= 4 ||
+        !@tweets[-4..-1].select { |t| t.user.screen_name == username }.empty?
     end
   end
 
-  class Bot
-    attr_accessor :consumer_key, :consumer_secret,
-                  :access_token, :access_token_secret
+  # Meta information about a tweet that we calculate for ourselves
+  class TweetMeta
+    # @return [Array<String>] usernames mentioned in tweet
+    attr_accessor :mentions
+    # @return [String] text of tweets with mentions removed
+    attr_accessor :mentionless
+    # @return [Array<String>] usernames to include in a reply
+    attr_accessor :reply_mentions
+    # @return [String] mentions to start reply with
+    attr_accessor :reply_prefix
+    # @return [Integer] available chars for reply
+    attr_accessor :limit
 
-    attr_reader :twitter, :stream, :thread
+    # @return [Ebooks::Bot] associated bot
+    attr_accessor :bot
+    # @return [Twitter::Tweet] associated tweet
+    attr_accessor :tweet
 
-    # Configuration
-    attr_accessor :username, :delay_range, :blacklist
-
-    @@all = [] # List of all defined bots
-    def self.all; @@all; end
-
-    def self.get(name)
-      all.find { |bot| bot.username == name }
-    end
-
-    def log(*args)
-      STDOUT.print "@#{@username}: " + args.map(&:to_s).join(' ') + "\n"
-      STDOUT.flush
-    end
-
-    def initialize(*args, &b)
-      @username ||= nil
-      @blacklist ||= []
-      @delay_range ||= 0
-
-      @users ||= {}
-      @interactions ||= {}
-      configure(*args, &b)
-
-      # Tweet ids we've already observed, to avoid duplication
-      @seen_tweets ||= {}
-    end
-
-    def userinfo(username)
-      @users[username] ||= UserInfo.new(username)
-    end
-
-    def interaction(username)
-      if @interactions[username] &&
-         Time.now - @interactions[username].last_update < 600
-        @interactions[username]
-      else
-        @interactions[username] = Interaction.new(userinfo(username))
-      end
-    end
-
-    def twitter
-      @twitter ||= Twitter::REST::Client.new do |config|
-        config.consumer_key = @consumer_key
-        config.consumer_secret = @consumer_secret
-        config.access_token = @access_token
-        config.access_token_secret = @access_token_secret
-      end
-    end
-
-    def stream
-      @stream ||= Twitter::Streaming::Client.new do |config|
-        config.consumer_key = @consumer_key
-        config.consumer_secret = @consumer_secret
-        config.access_token = @access_token
-        config.access_token_secret = @access_token_secret
-      end
-    end
-
-    # Calculate some meta information about a tweet relevant for replying
-    def calc_meta(ev)
-      meta = {}
-      meta[:mentions] = ev.attrs[:entities][:user_mentions].map { |x| x[:screen_name] }
-
+    # Check whether this tweet mentions our bot
+    # @return [Boolean]
+    def mentions_bot?
       # To check if this is someone talking to us, ensure:
       # - The tweet mentions list contains our username
       # - The tweet is not being retweeted by somebody else
       # - Or soft-retweeted by somebody else
-      meta[:mentions_bot] = meta[:mentions].map(&:downcase).include?(@username.downcase) && !ev.retweeted_status? && !ev.text.start_with?('RT ')
+      @mentions.map(&:downcase).include?(@bot.username.downcase) && !@tweet.retweeted_status? && !@tweet.text.start_with?('RT ')
+    end
+
+    # @param bot [Ebooks::Bot]
+    # @param ev [Twitter::Tweet]
+    def initialize(bot, ev)
+      @bot = bot
+      @tweet = ev
+
+      @mentions = ev.attrs[:entities][:user_mentions].map { |x| x[:screen_name] }
 
       # Process mentions to figure out who to reply to
-      reply_mentions = meta[:mentions].reject { |m| m.downcase == @username.downcase }
-      reply_mentions = reply_mentions.select { |username| userinfo(username).can_pester? }
-      meta[:reply_mentions] = [ev.user.screen_name] + reply_mentions
+      # i.e. not self and nobody who has seen too many secondary mentions
+      reply_mentions = @mentions.reject do |m|
+        username = m.downcase
+        username == @bot.username || !@bot.conversation(ev).can_include?(username)
+      end
+      @reply_mentions = ([ev.user.screen_name] + reply_mentions).uniq
 
-      meta[:reply_prefix] = meta[:reply_mentions].uniq.map { |m| '@'+m }.join(' ') + ' '
-
-      meta[:limit] = 140 - meta[:reply_prefix].length
+      @reply_prefix = @reply_mentions.map { |m| '@'+m }.join(' ') + ' '
+      @limit = 140 - @reply_prefix.length
 
       mless = ev.text
       begin
@@ -155,12 +103,116 @@ module Ebooks
         p ev.text
         raise
       end
-      meta[:mentionless] = mless
+      @mentionless = mless
+    end
+  end
 
-      meta
+  class Bot
+    # @return [String] OAuth consumer key for a Twitter app
+    attr_accessor :consumer_key
+    # @return [String] OAuth consumer secret for a Twitter app
+    attr_accessor :consumer_secret
+    # @return [String] OAuth access token from `ebooks auth`
+    attr_accessor :access_token
+    # @return [String] OAuth access secret from `ebooks auth`
+    attr_accessor :access_token_secret
+    # @return [String] Twitter username of bot
+    attr_accessor :username
+    # @return [Array<String>] list of usernames to block on contact
+    attr_accessor :blacklist
+    # @return [Hash{String => Ebooks::Conversation}] maps tweet ids to their conversation contexts
+    attr_accessor :conversations
+    # @return [Range, Integer] range of seconds to delay in delay method
+    attr_accessor :delay_range
+
+    # @return [Array] list of all defined bots
+    def self.all; @@all ||= []; end
+
+    # Fetches a bot by username
+    # @param username [String]
+    # @return [Ebooks::Bot]
+    def self.get(username)
+      all.find { |bot| bot.username == username }
+    end
+
+    # Logs info to stdout in the context of this bot
+    def log(*args)
+      STDOUT.print "@#{@username}: " + args.map(&:to_s).join(' ') + "\n"
+      STDOUT.flush
+    end
+
+    # Initializes and configures bot
+    # @param args Arguments passed to configure method
+    # @param b Block to call with new bot
+    def initialize(username, &b)
+      @blacklist ||= []
+      @conversations ||= {}
+      # Tweet ids we've already observed, to avoid duplication
+      @seen_tweets ||= {}
+
+      @username = username
+      configure
+
+      b.call(self) unless b.nil?
+      Bot.all << self
+    end
+
+    # Find or create the conversation context for this tweet
+    # @param tweet [Twitter::Tweet]
+    # @return [Ebooks::Conversation]
+    def conversation(tweet)
+      conv = if tweet.in_reply_to_status_id?
+        @conversations[tweet.in_reply_to_status_id]
+      end
+
+      if conv.nil?
+        conv = @conversations[tweet.id] || Conversation.new(self)
+      end
+
+      if tweet.in_reply_to_status_id?
+        @conversations[tweet.in_reply_to_status_id] = conv
+      end
+      @conversations[tweet.id] = conv
+
+      # Expire any old conversations to prevent memory growth
+      @conversations.each do |k,v|
+        if v != conv && Time.now - v.last_update > 3600
+          @conversations.delete(k)
+        end
+      end
+
+      conv
+    end
+
+    # @return [Twitter::REST::Client] underlying REST client from twitter gem
+    def twitter
+      @twitter ||= Twitter::REST::Client.new do |config|
+        config.consumer_key = @consumer_key
+        config.consumer_secret = @consumer_secret
+        config.access_token = @access_token
+        config.access_token_secret = @access_token_secret
+      end
+    end
+
+    # @return [Twitter::Streaming::Client] underlying streaming client from twitter gem
+    def stream
+      @stream ||= Twitter::Streaming::Client.new do |config|
+        config.consumer_key = @consumer_key
+        config.consumer_secret = @consumer_secret
+        config.access_token = @access_token
+        config.access_token_secret = @access_token_secret
+      end
+    end
+
+    # Calculate some meta information about a tweet relevant for replying
+    # @param ev [Twitter::Tweet]
+    # @return [Ebooks::TweetMeta]
+    def meta(ev)
+      TweetMeta.new(self, ev)
     end
 
     # Receive an event from the twitter stream
+    # @param ev [Object] Twitter streaming event
     def receive_event(ev)
       if ev.is_a? Array # Initial array sent on first connection
         log "Online!"
@@ -181,7 +233,7 @@ module Ebooks
         return unless ev.text # If it's not a text-containing tweet, ignore it
         return if ev.user.screen_name == @username # Ignore our own tweets
 
-        meta = calc_meta(ev)
+        meta = meta(ev)
 
         if blacklisted?(ev.user.screen_name)
           log "Blocking blacklisted user @#{ev.user.screen_name}"
@@ -190,17 +242,18 @@ module Ebooks
 
         # Avoid responding to duplicate tweets
         if @seen_tweets[ev.id]
+          log "Not firing event for duplicate tweet #{ev.id}"
           return
         else
           @seen_tweets[ev.id] = true
         end
 
-        if meta[:mentions_bot]
+        if meta.mentions_bot?
           log "Mention from @#{ev.user.screen_name}: #{ev.text}"
-          interaction(ev.user.screen_name).receive(ev)
-          fire(:mention, ev, meta)
+          conversation(ev).add(ev)
+          fire(:mention, ev)
         else
-          fire(:timeline, ev, meta)
+          fire(:timeline, ev)
         end
 
       elsif ev.is_a?(Twitter::Streaming::DeletedTweet) ||
@@ -211,7 +264,31 @@ module Ebooks
       end
     end
 
-    def start_stream
+    # Configures client and fires startup event
+    def prepare
+      # Sanity check
+      if @username.nil?
+        raise ConfigurationError, "bot username cannot be nil"
+      end
+
+      if @consumer_key.nil? || @consumer_key.empty? ||
+         @consumer_secret.nil? || @consumer_key.empty?
+        log "Missing consumer_key or consumer_secret. These details can be acquired by registering a Twitter app at https://apps.twitter.com/"
+        exit 1
+      end
+
+      if @access_token.nil? || @access_token.empty? ||
+         @access_token_secret.nil? || @access_token_secret.empty?
+        log "Missing access_token or access_token_secret. Please run `ebooks auth`."
+        exit 1
+      end
+
+      twitter
+      fire(:startup)
+    end
+
+    # Start running user event stream
+    def start
       log "starting tweet stream"
 
       stream.user do |ev|
@@ -219,22 +296,9 @@ module Ebooks
       end
     end
 
-    def prepare
-      # Sanity check
-      if @username.nil?
-        raise ConfigurationError, "bot.username cannot be nil"
-      end
-
-      twitter
-      fire(:startup)
-    end
-
-    # Connects to tweetstream and opens event handlers for this bot
-    def start
-      start_stream
-    end
-
     # Fire an event
+    # @param event [Symbol] event to fire
+    # @param args arguments for event handler
     def fire(event, *args)
       handler = "on_#{event}".to_sym
       if respond_to? handler
@@ -242,11 +306,17 @@ module Ebooks
       end
     end
 
-    def delay(&b)
-      time = @delay.to_a.sample unless @delay.is_a? Integer
+    # Delay an action for a variable period of time
+    # @param range [Range, Integer] range of seconds to choose for delay
+    def delay(range=@delay_range, &b)
+      time = range.to_a.sample unless range.is_a? Integer
       sleep time
+      b.call
     end
 
+    # Check if a username is blacklisted
+    # @param username [String]
+    # @return [Boolean]
     def blacklisted?(username)
       if @blacklist.include?(username)
         true
@@ -256,45 +326,36 @@ module Ebooks
     end
 
     # Reply to a tweet or a DM.
+    # @param ev [Twitter::Tweet, Twitter::DirectMessage]
+    # @param text [String] contents of reply excluding reply_prefix
+    # @param opts [Hash] additional params to pass to twitter gem
     def reply(ev, text, opts={})
       opts = opts.clone
 
       if ev.is_a? Twitter::DirectMessage
-        return if blacklisted?(ev.sender.screen_name)
         log "Sending DM to @#{ev.sender.screen_name}: #{text}"
         twitter.create_direct_message(ev.sender.screen_name, text, opts)
       elsif ev.is_a? Twitter::Tweet
-        meta = calc_meta(ev)
+        meta = meta(ev)
 
-        if !interaction(ev.user.screen_name).continue?
+        if conversation(ev).is_bot?(ev.user.screen_name)
           log "Not replying to suspected bot @#{ev.user.screen_name}"
-          return
+          return false
         end
 
-        if !meta[:mentions_bot]
-          if !userinfo(ev.user.screen_name).can_pester?
-            log "Not replying: leaving @#{ev.user.screen_name} alone"
-            return
-          else
-            userinfo(ev.user.screen_name).pesters_left -= 1
-          end
-        end
-
-        log "Replying to @#{ev.user.screen_name} with: #{meta[:reply_prefix] + text}"
-        twitter.update(meta[:reply_prefix] + text, in_reply_to_status_id: ev.id)
+        log "Replying to @#{ev.user.screen_name} with: #{meta.reply_prefix + text}"
+        tweet = twitter.update(meta.reply_prefix + text, in_reply_to_status_id: ev.id)
+        conversation(tweet).add(tweet)
+        tweet
       else
         raise Exception("Don't know how to reply to a #{ev.class}")
       end
     end
 
+    # Favorite a tweet
+    # @param tweet [Twitter::Tweet]
     def favorite(tweet)
-      return if blacklisted?(tweet.user.screen_name)
       log "Favoriting @#{tweet.user.screen_name}: #{tweet.text}"
-
-      meta = calc_meta(tweet)
-      if !meta[:mentions_bot] && !userinfo(ev.user.screen_name).can_pester?
-        log "Not favoriting: leaving @#{ev.user.screen_name} alone"
-      end
 
       begin
         twitter.favorite(tweet.id)
@@ -303,8 +364,9 @@ module Ebooks
       end
     end
 
+    # Retweet a tweet
+    # @param tweet [Twitter::Tweet]
     def retweet(tweet)
-      return if blacklisted?(tweet.user.screen_name)
       log "Retweeting @#{tweet.user.screen_name}: #{tweet.text}"
 
       begin
@@ -314,21 +376,36 @@ module Ebooks
       end
     end
 
-    def follow(*args)
-      log "Following #{args}"
-      twitter.follow(*args)
+    # Follow a user
+    # @param user [String] username or user id
+    def follow(user, *args)
+      log "Following #{user}"
+      twitter.follow(user, *args)
     end
 
-    def tweet(*args)
-      log "Tweeting #{args.inspect}"
-      twitter.update(*args)
+    # Unfollow a user
+    # @param user [String] username or user id
+    def unfollow(user, *args)
+      log "Unfollowing #{user}"
+      twiter.unfollow(user, *args)
     end
 
+    # Tweet something
+    # @param text [String]
+    def tweet(text, *args)
+      log "Tweeting '#{text}'"
+      twitter.update(text, *args)
+    end
+
+    # Get a scheduler for this bot
+    # @return [Rufus::Scheduler]
     def scheduler
       @scheduler ||= Rufus::Scheduler.new
     end
 
-    # could easily just be *args however the separation keeps it clean.
+    # Tweet some text with an image
+    # @param txt [String]
+    # @param pic [String] filename
     def pictweet(txt, pic, *args)
       log "Tweeting #{txt.inspect} - #{pic} #{args}"
       twitter.update_with_media(txt, File.new(pic), *args)

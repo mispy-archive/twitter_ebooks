@@ -8,16 +8,41 @@ require 'csv'
 
 module Ebooks
   class Model
-    attr_accessor :hash, :tokens, :sentences, :mentions, :keywords
+    # @return [Array<String>]
+    # An array of unique tokens. This is the main source of actual strings
+    # in the model. Manipulation of a token is done using its index
+    # in this array, which we call a "tiki"
+    attr_accessor :tokens
 
-    def self.consume(txtpath)
-      Model.new.consume(txtpath)
+    # @return [Array<Array<Integer>>]
+    # Sentences represented by arrays of tikis
+    attr_accessor :sentences
+
+    # @return [Array<Array<Integer>>]
+    # Sentences derived from Twitter mentions
+    attr_accessor :mentions
+
+    # @return [Array<String>]
+    # The top 200 most important keywords, in descending order
+    attr_accessor :keywords
+
+    # Generate a new model from a corpus file
+    # @param path [String]
+    # @return [Ebooks::Model]
+    def self.consume(path)
+      Model.new.consume(path)
     end
 
+    # Generate a new model from multiple corpus files
+    # @param paths [Array<String>]
+    # @return [Ebooks::Model]
     def self.consume_all(paths)
       Model.new.consume_all(paths)
     end
 
+    # Load a saved model
+    # @param path [String]
+    # @return [Ebooks::Model]
     def self.load(path)
       model = Model.new
       model.instance_eval do
@@ -30,6 +55,8 @@ module Ebooks
       model
     end
 
+    # Save model to a file
+    # @param path [String]
     def save(path)
       File.open(path, 'wb') do |f|
         f.write(Marshal.dump({
@@ -43,19 +70,22 @@ module Ebooks
     end
 
     def initialize
-      # This is the only source of actual strings in the model. It is
-      # an array of unique tokens. Manipulation of a token is mostly done
-      # using its index in this array, which we call a "tiki"
       @tokens = []
 
       # Reverse lookup tiki by token, for faster generation
       @tikis = {}
     end
 
+    # Reverse lookup a token index from a token
+    # @param token [String]
+    # @return [Integer]
     def tikify(token)
       @tikis[token] or (@tokens << token and @tikis[token] = @tokens.length-1)
     end
 
+    # Convert a body of text into arrays of tikis
+    # @param text [String]
+    # @return [Array<Array<Integer>>]
     def mass_tikify(text)
       sentences = NLP.sentences(text)
 
@@ -69,9 +99,10 @@ module Ebooks
       end
     end
 
+    # Consume a corpus into this model
+    # @param path [String]
     def consume(path)
       content = File.read(path, :encoding => 'utf-8')
-      @hash = Digest::MD5.hexdigest(content)
 
       if path.split('.')[-1] == "json"
         log "Reading json corpus from #{path}"
@@ -94,6 +125,8 @@ module Ebooks
       consume_lines(lines)
     end
 
+    # Consume a sequence of lines
+    # @param lines [Array<String>]
     def consume_lines(lines)
       log "Removing commented lines and sorting mentions"
 
@@ -126,11 +159,12 @@ module Ebooks
       self
     end
 
+    # Consume multiple corpuses into this model
+    # @param paths [Array<String>]
     def consume_all(paths)
       lines = []
       paths.each do |path|
         content = File.read(path, :encoding => 'utf-8')
-        @hash = Digest::MD5.hexdigest(content)
 
         if path.split('.')[-1] == "json"
           log "Reading json corpus from #{path}"
@@ -156,25 +190,26 @@ module Ebooks
       consume_lines(lines)
     end
 
-    def fix(tweet)
-      # This seems to require an external api call
-      #begin
-      #  fixer = NLP.gingerice.parse(tweet)
-      #  log fixer if fixer['corrections']
-      #  tweet = fixer['result']
-      #rescue Exception => e
-      #  log e.message
-      #  log e.backtrace
-      #end
-
-      NLP.htmlentities.decode tweet
+    # Correct encoding issues in generated text
+    # @param text [String]
+    # @return [String]
+    def fix(text)
+      NLP.htmlentities.decode text
     end
 
+    # Check if an array of tikis comprises a valid tweet
+    # @param tikis [Array<Integer>]
+    # @param limit Integer how many chars we have left
     def valid_tweet?(tikis, limit)
       tweet = NLP.reconstruct(tikis, @tokens)
       tweet.length <= limit && !NLP.unmatched_enclosers?(tweet)
     end
 
+    # Generate some text
+    # @param limit [Integer] available characters
+    # @param generator [SuffixGenerator, nil]
+    # @param retry_limit [Integer] how many times to retry on duplicates
+    # @return [String]
     def make_statement(limit=140, generator=nil, retry_limit=10)
       responding = !generator.nil?
       generator ||= SuffixGenerator.build(@sentences)
@@ -209,12 +244,17 @@ module Ebooks
     end
 
     # Test if a sentence has been copied verbatim from original
-    def verbatim?(tokens)
-      @sentences.include?(tokens) || @mentions.include?(tokens)
+    # @param tikis [Array<Integer>]
+    # @return [Boolean]
+    def verbatim?(tikis)
+      @sentences.include?(tikis) || @mentions.include?(tikis)
     end
 
-    # Finds all relevant tokenized sentences to given input by
+    # Finds relevant and slightly relevant tokenized sentences to input
     # comparing non-stopword token overlaps
+    # @param sentences [Array<Array<Integer>>]
+    # @param input [String]
+    # @return [Array<Array<Array<Integer>>, Array<Array<Integer>>>]
     def find_relevant(sentences, input)
       relevant = []
       slightly_relevant = []
@@ -235,6 +275,10 @@ module Ebooks
 
     # Generates a response by looking for related sentences
     # in the corpus and building a smaller generator from these
+    # @param input [String]
+    # @param limit [Integer] characters available for response
+    # @param sentences [Array<Array<Integer>>]
+    # @return [String]
     def make_response(input, limit=140, sentences=@mentions)
       # Prefer mentions
       relevant, slightly_relevant = find_relevant(sentences, input)

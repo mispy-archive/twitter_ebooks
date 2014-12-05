@@ -18,8 +18,9 @@ Gem::Specification.new do |gem|
   gem.add_development_dependency 'rspec'
   gem.add_development_dependency 'rspec-mocks'
   gem.add_development_dependency 'memory_profiler'
-  gem.add_development_dependency 'pry-byebug'
   gem.add_development_dependency 'timecop'
+  gem.add_development_dependency 'pry-byebug'
+  gem.add_development_dependency 'yard'
 
   gem.add_runtime_dependency 'twitter', '~> 5.0'
   gem.add_runtime_dependency 'simple_oauth'
@@ -30,4 +31,5 @@ Gem::Specification.new do |gem|
   gem.add_runtime_dependency 'engtagger'
   gem.add_runtime_dependency 'fast-stemmer'
   gem.add_runtime_dependency 'highscore'
+  gem.add_runtime_dependency 'pry'
 end

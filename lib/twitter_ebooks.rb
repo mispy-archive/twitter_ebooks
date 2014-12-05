@@ -11,11 +11,11 @@ module Ebooks
   SKELETON_PATH = File.join(GEM_PATH, 'skeleton')
   TEST_PATH = File.join(GEM_PATH, 'test')
   TEST_CORPUS_PATH = File.join(TEST_PATH, 'corpus/0xabad1dea.tweets')
+  INTERIM = :interim
 end
 
 require 'twitter_ebooks/nlp'
 require 'twitter_ebooks/archive'
-require 'twitter_ebooks/markov'
 require 'twitter_ebooks/suffix'
 require 'twitter_ebooks/model'
 require 'twitter_ebooks/bot'

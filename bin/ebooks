@@ -2,54 +2,85 @@
 # encoding: utf-8
 
 require 'twitter_ebooks'
-require 'csv'
+require 'ostruct'
 
-$debug = true
+module Ebooks::Util
+  def pretty_exception(e)
 
-module Ebooks
+  end
+end
+
+module Ebooks::CLI
   APP_PATH = Dir.pwd # XXX do some recursive thing instead
+  HELP = OpenStruct.new
 
-  def self.new(reponame)
-    usage = <<STR
-Usage: ebooks new <reponame>
+  HELP.default = <<STR
+Usage:
+     ebooks help <command>
 
-Creates a new skeleton repository defining a template bot in
-the current working directory specified by <reponame>.
+     ebooks new <reponame>
+     ebooks auth
+     ebooks consume <corpus_path> [corpus_path2] [...]
+     ebooks consume-all <corpus_path> [corpus_path2] [...]
+     ebooks gen <model_path> [input]
+     ebooks archive <username> [path]
+     ebooks tweet <model_path> <botname>
 STR
 
+  def self.help(command=nil)
+    if command.nil?
+      log HELP.default
+    else
+      log HELP[command].gsub(/^ {4}/, '')
+    end
+  end
+
+  HELP.new = <<-STR
+    Usage: ebooks new <reponame>
+
+    Creates a new skeleton repository defining a template bot in
+    the current working directory specified by <reponame>.
+  STR
+
+  def self.new(reponame)
     if reponame.nil?
-      log usage
-      exit
+      help :new
+      exit 1
     end
 
     path = "./#{reponame}"
 
     if File.exists?(path)
       log "#{path} already exists. Please remove if you want to recreate."
-      exit
+      exit 1
     end
 
-    FileUtils.cp_r(SKELETON_PATH, path)
+    FileUtils.cp_r(Ebooks::SKELETON_PATH, path)
 
     File.open(File.join(path, 'bots.rb'), 'w') do |f|
-      template = File.read(File.join(SKELETON_PATH, 'bots.rb'))
+      template = File.read(File.join(Ebooks::SKELETON_PATH, 'bots.rb'))
       f.write(template.gsub("{{BOT_NAME}}", reponame))
+    end
+
+    File.open(File.join(path, 'Gemfile'), 'w') do |f|
+      template = File.read(File.join(Ebooks::SKELETON_PATH, 'Gemfile'))
+      f.write(template.gsub("{{RUBY_VERSION}}", RUBY_VERSION))
     end
 
     log "New twitter_ebooks app created at #{reponame}"
   end
 
+  HELP.consume = <<-STR
+    Usage: ebooks consume <corpus_path> [corpus_path2] [...]
+
+    Processes some number of text files or json tweet corpuses
+    into usable models. These will be output at model/<name>.model
+  STR
+
   def self.consume(pathes)
-    usage = <<STR
-Usage: ebooks consume <corpus_path> [corpus_path2] [...]
-
-Processes some number of text files or json tweet corpuses
-into usable models. These will be output at model/<name>.model
-STR
-
     if pathes.empty?
-      log usage
-      exit
+      help :consume
+      exit 1
     end
 
     pathes.each do |path|
@@ -57,50 +88,43 @@ STR
       shortname = filename.split('.')[0..-2].join('.')
 
       outpath = File.join(APP_PATH, 'model', "#{shortname}.model")
-      Model.consume(path).save(outpath)
+      Ebooks::Model.consume(path).save(outpath)
       log "Corpus consumed to #{outpath}"
     end
   end
 
+  HELP.consume_all = <<-STR
+    Usage: ebooks consume-all <name> <corpus_path> [corpus_path2] [...]
+
+    Processes some number of text files or json tweet corpuses
+    into one usable model. It will be output at model/<name>.model
+  STR
+
   def self.consume_all(name, paths)
-    usage = <<STR
-Usage: ebooks consume-all <name> <corpus_path> [corpus_path2] [...]
-
-Processes some number of text files or json tweet corpuses
-into one usable model. It will be output at model/<name>.model
-STR
-
     if paths.empty?
-      log usage
-      exit
+      help :consume_all
+      exit 1
     end
 
     outpath = File.join(APP_PATH, 'model', "#{name}.model")
-    #pathes.each do |path|
-    #  filename = File.basename(path)
-    #  shortname = filename.split('.')[0..-2].join('.')
-    #
-    #  outpath = File.join(APP_PATH, 'model', "#{shortname}.model")
-    #  Model.consume(path).save(outpath)
-    #  log "Corpus consumed to #{outpath}"
-    #end
-    Model.consume_all(paths).save(outpath)
+    Ebooks::Model.consume_all(paths).save(outpath)
     log "Corpuses consumed to #{outpath}"
   end
 
-  def self.gen(model_path, input)
-    usage = <<STR
-Usage: ebooks gen <model_path> [input]
+  HELP.gen = <<-STR
+    Usage: ebooks gen <model_path> [input]
 
-Make a test tweet from the processed model at <model_path>.
-Will respond to input if provided.
-STR
+    Make a test tweet from the processed model at <model_path>.
+    Will respond to input if provided.
+  STR
+
+  def self.gen(model_path, input)
     if model_path.nil?
-      log usage
-      exit
+      help :gen
+      exit 1
     end
 
-    model = Model.load(model_path)
+    model = Ebooks::Model.load(model_path)
     if input && !input.empty?
       puts "@cmd " + model.make_response(input, 135)
     else
@@ -108,81 +132,186 @@ STR
     end
   end
 
-  def self.score(model_path, input)
-    usage = <<STR
-Usage: ebooks score <model_path> <input>
+  HELP.archive = <<-STR
+    Usage: ebooks archive <username> [outpath]
 
-Scores "interest" in some text input according to how
-well unique keywords match the model.
-STR
-    if model_path.nil? || input.nil?
-      log usage
-      exit
+    Downloads a json corpus of the <username>'s tweets.
+    Output defaults to corpus/<username>.json
+    Due to API limitations, this can only receive up to ~3000 tweets
+    into the past.
+  STR
+
+  def self.archive(username, outpath=nil)
+    if username.nil?
+      help :archive
+      exit 1
     end
 
-    model = Model.load(model_path)
-    model.score_interest(input)
+    Ebooks::Archive.new(username, outpath).sync
   end
 
-  def self.archive(username, outpath)
-    usage = <<STR
-Usage: ebooks archive <username> <outpath>
+  HELP.tweet = <<-STR
+    Usage: ebooks tweet <model_path> <botname>
 
-Downloads a json corpus of the <username>'s tweets to <outpath>.
-Due to API limitations, this can only receive up to ~3000 tweets
-into the past.
-STR
-
-    if username.nil? || outpath.nil?
-      log usage
-      exit
-    end
-
-    Archive.new(username, outpath).sync
-  end
+    Sends a public tweet from the specified bot using text
+    from the processed model at <model_path>.
+  STR
 
   def self.tweet(modelpath, botname)
-    usage = <<STR
-Usage: ebooks tweet <model_path> <botname>
-
-Sends a public tweet from the specified bot using text
-from the processed model at <model_path>.
-STR
-
     if modelpath.nil? || botname.nil?
-      log usage
-      exit
+      help :tweet
+      exit 1
     end
 
     load File.join(APP_PATH, 'bots.rb')
-    model = Model.load(modelpath)
+    model = Ebooks::Model.load(modelpath)
     statement = model.make_statement
-    log "@#{botname}: #{statement}"
-    bot = Bot.get(botname)
+    bot = Ebooks::Bot.get(botname)
     bot.configure
     bot.tweet(statement)
   end
 
-  def self.c
+  HELP.auth = <<-STR
+    Usage: ebooks auth
+
+    Authenticates your Twitter app for any account. By default, will
+    use the consumer key and secret from the first defined bot. You
+    can specify another by setting the CONSUMER_KEY and CONSUMER_SECRET
+    environment variables.
+  STR
+
+  def self.auth
+    consumer_key, consumer_secret = find_consumer
+    require 'oauth'
+
+    consumer = OAuth::Consumer.new(
+      consumer_key,
+      consumer_secret,
+      site: 'https://twitter.com/',
+      scheme: :header
+    )
+
+    request_token = consumer.get_request_token
+    auth_url = request_token.authorize_url()
+
+    pin = nil
+    loop do
+      log auth_url
+
+      log "Go to the above url and follow the prompts, then enter the PIN code here."
+      print "> "
+
+      pin = STDIN.gets.chomp
+
+      break unless pin.empty?
+    end
+
+    access_token = request_token.get_access_token(oauth_verifier: pin)
+
+    log "Account authorized successfully. Make sure to put these in your bots.rb!\n" +
+         "  access token: #{access_token.token}\n" +
+         "  access token secret: #{access_token.secret}"
+  end
+
+  HELP.console = <<-STR
+    Usage: ebooks c[onsole]
+
+    Starts an interactive ruby session with your bots loaded
+    and configured.
+  STR
+
+  def self.console
+    load_bots
+    require 'pry'; Ebooks.module_exec { pry }
+  end
+
+  HELP.start = <<-STR
+    Usage: ebooks s[tart] [botname]
+
+    Starts running bots. If botname is provided, only runs that bot.
+  STR
+
+  def self.start(botname=nil)
+    load_bots
+
+    if botname.nil?
+      bots = Ebooks::Bot.all
+    else
+      bots = Ebooks::Bot.all.select { |bot| bot.username == botname }
+      if bots.empty?
+        log "Couldn't find a defined bot for @#{botname}!"
+        exit 1
+      end
+    end
+
+    threads = []
+    bots.each do |bot|
+      threads << Thread.new { bot.prepare }
+    end
+    threads.each(&:join)
+
+    threads = []
+    bots.each do |bot|
+      threads << Thread.new do
+        loop do
+          begin
+            bot.start
+          rescue Exception => e
+            bot.log e.inspect
+            puts e.backtrace.map { |s| "\t"+s }.join("\n")
+          end
+          bot.log "Sleeping before reconnect"
+          sleep 5
+        end
+      end
+    end
+    threads.each(&:join)
+  end
+
+  # Non-command methods
+
+  def self.find_consumer
+    if ENV['CONSUMER_KEY'] && ENV['CONSUMER_SECRET']
+      log "Using consumer details from environment variables:\n" +
+          "  consumer key: #{ENV['CONSUMER_KEY']}\n" +
+          "  consumer secret: #{ENV['CONSUMER_SECRET']}"
+      return [ENV['CONSUMER_KEY'], ENV['CONSUMER_SECRET']]
+    end
+
+    load_bots
+    consumer_key = nil
+    consumer_secret = nil
+    Ebooks::Bot.all.each do |bot|
+      if bot.consumer_key && bot.consumer_secret
+        consumer_key = bot.consumer_key
+        consumer_secret = bot.consumer_secret
+        log "Using consumer details from @#{bot.username}:\n" +
+            "  consumer key: #{bot.consumer_key}\n" +
+            "  consumer secret: #{bot.consumer_secret}\n"
+        return consumer_key, consumer_secret
+      end
+    end
+
+    if consumer_key.nil? || consumer_secret.nil?
+      log "Couldn't find any consumer details to auth an account with.\n" +
+          "Please either configure a bot with consumer_key and consumer_secret\n" +
+          "or provide the CONSUMER_KEY and CONSUMER_SECRET environment variables."
+      exit 1
+    end
+  end
+
+  def self.load_bots
     load 'bots.rb'
-    require 'pry'; pry
+
+    if Ebooks::Bot.all.empty?
+      puts "Couldn't find any bots! Please make sure bots.rb instantiates at least one bot."
+    end
   end
 
   def self.command(args)
-    usage = <<STR
-Usage:
-     ebooks new <reponame>
-     ebooks consume <corpus_path> [corpus_path2] [...]
-     ebooks consume-all <corpus_path> [corpus_path2] [...]
-     ebooks gen <model_path> [input]
-     ebooks score <model_path> <input>
-     ebooks archive <@user> <outpath>
-     ebooks tweet <model_path> <botname>
-STR
-
     if args.length == 0
-      log usage
-      exit
+      help
+      exit 1
     end
 
     case args[0]
@@ -190,16 +319,21 @@ STR
     when "consume" then consume(args[1..-1])
     when "consume-all" then consume_all(args[1], args[2..-1])
     when "gen" then gen(args[1], args[2..-1].join(' '))
-    when "score" then score(args[1], args[2..-1].join(' '))
     when "archive" then archive(args[1], args[2])
     when "tweet" then tweet(args[1], args[2])
     when "jsonify" then jsonify(args[1..-1])
-    when "c" then c
+    when "auth" then auth
+    when "console" then console
+    when "c" then console
+    when "start" then start(args[1])
+    when "s" then start(args[1])
+    when "help" then help(args[1])
     else
-      log usage
+      log "No such command '#{args[0]}'"
+      help
       exit 1
     end
   end
 end
 
-Ebooks.command(ARGV)
+Ebooks::CLI.command(ARGV)
