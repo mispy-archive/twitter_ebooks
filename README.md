@@ -8,13 +8,14 @@ A framework for building interactive twitterbots which respond to mentions/DMs. 
 
 ## New in 3.0
 
+- About 80% less memory and storage use for models
 - Bots run in their own threads (no eventmachine), and startup is parallelized
 - Bots start with `ebooks start`, and no longer die on unhandled exceptions
 - `ebooks auth` command will create new access tokens, for running multiple bots
 - `ebooks console` starts a ruby interpreter with bots loaded (see Ebooks::Bot.all)
 - Replies are slightly rate-limited to prevent infinite bot convos
 - Non-participating users in a mention chain will be dropped after a few tweets
-- [API documentation](http://rdoc.info/github/mispy/twitter_ebooks)
+- [API documentation](http://rdoc.info/github/mispy/twitter_ebooks) and tests
 
 Note that 3.0 is not backwards compatible with 2.x, so upgrade carefully!
 
