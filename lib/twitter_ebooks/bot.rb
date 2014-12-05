@@ -12,62 +12,50 @@ module Ebooks
     # number of times we've interacted with a timeline tweet, unprompted
     attr_accessor :pesters_left
 
-    # number of times we've included them in a mention that wasn't from them
-    attr_accessor :includes_left
-
     def initialize(username)
       @username = username
       @pesters_left = 1
-      @includes_left = 2
     end
 
     def can_pester?
       @pesters_left > 0
     end
-
-    def can_include?
-      @includes_left > 0
-    end
   end
 
-  # Represents a current "interaction state" with another user
-  class Interaction
-    attr_reader :userinfo, :received, :last_update
+  # Represents a single reply tree of tweets
+  class Conversation
+    attr_reader :last_update
 
-    def initialize(userinfo)
-      @userinfo = userinfo
-      @received = []
+    def initialize(bot)
+      @bot = bot
+      @tweets = []
       @last_update = Time.now
     end
 
-    def receive(tweet)
-      @received << tweet
+    def add(tweet)
+      @tweets << tweet
       @last_update = Time.now
-
-      # When we receive a tweet from someone, become more
-      # inclined to pester them and include in mentions
-      @userinfo.pesters_left += 1
-      @userinfo.includes_left += 2
     end
 
-    # Make an informed guess as to whether this user is a bot
-    # based on its username and reply speed
-    def is_bot?
-      if @received.length > 2
-        if (@received[-1].created_at - @received[-3].created_at) < 30
+    # Make an informed guess as to whether a user is a bot based
+    # on their behavior in this conversation
+    def is_bot?(username)
+      usertweets = @tweets.select { |t| t.user.screen_name == username }
+
+      if usertweets.length > 2
+        if (usertweets[-1].created_at - usertweets[-3].created_at) < 30
           return true
         end
       end
 
-      @userinfo.username.include?("ebooks")
+      username.include?("ebooks")
     end
 
-    def continue?
-      if is_bot?
-        true if @received.length < 2
-      else
-        true
-      end
+    # Figure out whether to keep this user in the reply prefix
+    # We want to avoid spamming non-participating users
+    def can_include?(username)
+      @tweets.length <= 4 ||
+        !@tweets[-4..-1].select { |t| t.user.screen_name == username }.empty?
     end
   end
 
@@ -99,7 +87,7 @@ module Ebooks
       # i.e. not self and nobody who has seen too many secondary mentions
       reply_mentions = @mentions.reject do |m|
         username = m.downcase
-        username == @bot.username || !@bot.userinfo(username).can_include?
+        username == @bot.username || !@bot.conversation(ev).can_include?(username)
       end
       @reply_mentions = ([ev.user.screen_name] + reply_mentions).uniq
 
@@ -130,6 +118,8 @@ module Ebooks
     # Configuration
     attr_accessor :username, :delay_range, :blacklist
 
+    attr_accessor :conversations
+
     @@all = [] # List of all defined bots
     def self.all; @@all; end
 
@@ -148,7 +138,7 @@ module Ebooks
       @delay_range ||= 0
 
       @users ||= {}
-      @interactions ||= {}
+      @conversations ||= {}
       configure(*args, &b)
 
       # Tweet ids we've already observed, to avoid duplication
@@ -160,13 +150,29 @@ module Ebooks
       @users[username] ||= UserInfo.new(username)
     end
 
-    def interaction(username)
-      if @interactions[username] &&
-         Time.now - @interactions[username].last_update < 600
-        @interactions[username]
-      else
-        @interactions[username] = Interaction.new(userinfo(username))
+    # Grab or create the conversation context for this tweet
+    def conversation(tweet)
+      conv = if tweet.in_reply_to_status_id?
+        @conversations[tweet.in_reply_to_status_id]
       end
+
+      if conv.nil?
+        conv = @conversations[tweet.id] || Conversation.new(self)
+      end
+
+      if tweet.in_reply_to_status_id?
+        @conversations[tweet.in_reply_to_status_id] = conv
+      end
+      @conversations[tweet.id] = conv
+
+      # Expire any old conversations to prevent memory growth
+      @conversations.each do |k,v|
+        if v != conv && Time.now - v.last_update > 3600
+          @conversations.delete(k)
+        end
+      end
+
+      conv
     end
 
     def twitter
@@ -222,6 +228,7 @@ module Ebooks
 
         # Avoid responding to duplicate tweets
         if @seen_tweets[ev.id]
+          log "Not firing event for duplicate tweet #{ev.id}"
           return
         else
           @seen_tweets[ev.id] = true
@@ -229,7 +236,7 @@ module Ebooks
 
         if meta.mentions_bot?
           log "Mention from @#{ev.user.screen_name}: #{ev.text}"
-          interaction(ev.user.screen_name).receive(ev)
+          conversation(ev).add(ev)
           fire(:mention, ev, meta)
         else
           fire(:timeline, ev, meta)
@@ -292,13 +299,12 @@ module Ebooks
       opts = opts.clone
 
       if ev.is_a? Twitter::DirectMessage
-        return if blacklisted?(ev.sender.screen_name)
         log "Sending DM to @#{ev.sender.screen_name}: #{text}"
         twitter.create_direct_message(ev.sender.screen_name, text, opts)
       elsif ev.is_a? Twitter::Tweet
         meta = calc_meta(ev)
 
-        if !interaction(ev.user.screen_name).continue?
+        if conversation(ev).is_bot?(ev.user.screen_name)
           log "Not replying to suspected bot @#{ev.user.screen_name}"
           return
         end
@@ -310,16 +316,9 @@ module Ebooks
           end
         end
 
-        meta.reply_mentions.each do |username|
-          # Decrease includes_left for everyone involved here who isn't
-          # directly talking to the bot
-          if !meta.mentions_bot? || username != ev.user.screen_name
-            userinfo(username).includes_left -= 1
-          end
-        end
-
         log "Replying to @#{ev.user.screen_name} with: #{meta.reply_prefix + text}"
-        twitter.update(meta.reply_prefix + text, in_reply_to_status_id: ev.id)
+        tweet = twitter.update(meta.reply_prefix + text, in_reply_to_status_id: ev.id)
+        conversation(tweet).add(tweet)
       else
         raise Exception("Don't know how to reply to a #{ev.class}")
       end
@@ -329,11 +328,6 @@ module Ebooks
       return if blacklisted?(tweet.user.screen_name)
       log "Favoriting @#{tweet.user.screen_name}: #{tweet.text}"
 
-      meta = calc_meta(tweet)
-      #if !meta[:mentions_bot] && !userinfo(ev.user.screen_name).can_pester?
-      #  log "Not favoriting: leaving @#{ev.user.screen_name} alone"
-      #end
-
       begin
         twitter.favorite(tweet.id)
       rescue Twitter::Error::Forbidden
@@ -342,7 +336,6 @@ module Ebooks
     end
 
     def retweet(tweet)
-      return if blacklisted?(tweet.user.screen_name)
       log "Retweeting @#{tweet.user.screen_name}: #{tweet.text}"
 
       begin

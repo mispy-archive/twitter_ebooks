@@ -43,10 +43,11 @@ module Ebooks::Test
   # Creates a mock tweet
   # @param username User sending the tweet
   # @param text Tweet content
-  def mock_tweet(username, text)
+  def mock_tweet(username, text, extra={})
     mentions = text.split.find_all { |x| x.start_with?('@') }
-    Twitter::Tweet.new(
+    tweet = Twitter::Tweet.new({
       id: twitter_id,
+      in_reply_to_status_id: 'mock-link',
       user: { id: twitter_id, screen_name: username },
       text: text,
       created_at: Time.now.to_s,
@@ -56,22 +57,29 @@ module Ebooks::Test
             indices: [text.index(m), text.index(m)+m.length] }
         }
       }
-    )
+    }.merge!(extra))
+    tweet
+  end
+
+  def twitter_spy(bot)
+    twitter = spy("twitter")
+    allow(twitter).to receive(:update).and_return(mock_tweet(bot.username, "test tweet"))
+    twitter
   end
 
   def simulate(bot, &b)
-    bot.twitter = spy("twitter")
+    bot.twitter = twitter_spy(bot)
     b.call
   end
 
   def expect_direct_message(bot, content)
     expect(bot.twitter).to have_received(:create_direct_message).with(anything(), content, {})
-    bot.twitter = spy("twitter")
+    bot.twitter = twitter_spy(bot)
   end
 
   def expect_tweet(bot, content)
     expect(bot.twitter).to have_received(:update).with(content, anything())
-    bot.twitter = spy("twitter")
+    bot.twitter = twitter_spy(bot)
   end
 end
 
@@ -102,6 +110,20 @@ describe Ebooks::Bot do
       bot.receive_event(mock_tweet("m1sp", "some excellent tweet"))
       expect_tweet(bot, "@m1sp fine tweet good sir")
     end
+  end
+
+  it "links tweets to conversations correctly" do
+    tweet1 = mock_tweet("m1sp", "tweet 1", id: 1, in_reply_to_status_id: nil)
+
+    tweet2 = mock_tweet("m1sp", "tweet 2", id: 2, in_reply_to_status_id: 1)
+
+    tweet3 = mock_tweet("m1sp", "tweet 3", id: 3, in_reply_to_status_id: nil)
+
+    bot.conversation(tweet1).add(tweet1)
+    expect(bot.conversation(tweet2)).to eq(bot.conversation(tweet1))
+
+    bot.conversation(tweet2).add(tweet2)
+    expect(bot.conversation(tweet3)).to_not eq(bot.conversation(tweet2))
   end
 
   it "stops mentioning people after a certain limit" do
