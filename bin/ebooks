@@ -2,31 +2,54 @@
 # encoding: utf-8
 
 require 'twitter_ebooks'
-require 'csv'
+require 'ostruct'
 
 $debug = true
 
 module Ebooks::CLI
   APP_PATH = Dir.pwd # XXX do some recursive thing instead
+  HELP = OpenStruct.new
 
-  def self.new(reponame)
-    usage = <<STR
-Usage: ebooks new <reponame>
+  HELP.default = <<STR
+Usage:
+     ebooks help <command>
 
-Creates a new skeleton repository defining a template bot in
-the current working directory specified by <reponame>.
+     ebooks new <reponame>
+     ebooks auth
+     ebooks consume <corpus_path> [corpus_path2] [...]
+     ebooks consume-all <corpus_path> [corpus_path2] [...]
+     ebooks gen <model_path> [input]
+     ebooks score <model_path> <input>
+     ebooks archive <username> <outpath>
+     ebooks tweet <model_path> <botname>
 STR
 
+  def self.help(command=nil)
+    if command.nil?
+      log HELP.default
+    else
+      log HELP[command].gsub(/^ {4}/, '')
+    end
+  end
+
+  HELP.new = <<-STR
+    Usage: ebooks new <reponame>
+
+    Creates a new skeleton repository defining a template bot in
+    the current working directory specified by <reponame>.
+  STR
+
+  def self.new(reponame)
     if reponame.nil?
-      log usage
-      exit
+      help :new
+      exit 1
     end
 
     path = "./#{reponame}"
 
     if File.exists?(path)
       log "#{path} already exists. Please remove if you want to recreate."
-      exit
+      exit 1
     end
 
     FileUtils.cp_r(SKELETON_PATH, path)
@@ -39,17 +62,17 @@ STR
     log "New twitter_ebooks app created at #{reponame}"
   end
 
+  HELP.consume = <<-STR
+    Usage: ebooks consume <corpus_path> [corpus_path2] [...]
+
+    Processes some number of text files or json tweet corpuses
+    into usable models. These will be output at model/<name>.model
+  STR
+
   def self.consume(pathes)
-    usage = <<STR
-Usage: ebooks consume <corpus_path> [corpus_path2] [...]
-
-Processes some number of text files or json tweet corpuses
-into usable models. These will be output at model/<name>.model
-STR
-
     if pathes.empty?
-      log usage
-      exit
+      help :consume
+      exit 1
     end
 
     pathes.each do |path|
@@ -62,17 +85,17 @@ STR
     end
   end
 
+  HELP.consume_all = <<-STR
+    Usage: ebooks consume-all <name> <corpus_path> [corpus_path2] [...]
+
+    Processes some number of text files or json tweet corpuses
+    into one usable model. It will be output at model/<name>.model
+  STR
+
   def self.consume_all(name, paths)
-    usage = <<STR
-Usage: ebooks consume-all <name> <corpus_path> [corpus_path2] [...]
-
-Processes some number of text files or json tweet corpuses
-into one usable model. It will be output at model/<name>.model
-STR
-
     if paths.empty?
-      log usage
-      exit
+      help :consume_all
+      exit 1
     end
 
     outpath = File.join(APP_PATH, 'model', "#{name}.model")
@@ -88,16 +111,17 @@ STR
     log "Corpuses consumed to #{outpath}"
   end
 
-  def self.gen(model_path, input)
-    usage = <<STR
-Usage: ebooks gen <model_path> [input]
+  HELP.gen = <<-STR
+    Usage: ebooks gen <model_path> [input]
 
-Make a test tweet from the processed model at <model_path>.
-Will respond to input if provided.
-STR
+    Make a test tweet from the processed model at <model_path>.
+    Will respond to input if provided.
+  STR
+
+  def self.gen(model_path, input)
     if model_path.nil?
-      log usage
-      exit
+      help :gen
+      exit 1
     end
 
     model = Model.load(model_path)
@@ -108,50 +132,51 @@ STR
     end
   end
 
-  def self.score(model_path, input)
-    usage = <<STR
-Usage: ebooks score <model_path> <input>
+  HELP.score = <<-STR
+    Usage: ebooks score <model_path> <input>
 
-Scores "interest" in some text input according to how
-well unique keywords match the model.
-STR
+    Scores "interest" in some text input according to how
+    well unique keywords match the model.
+  STR
+
+  def self.score(model_path, input)
     if model_path.nil? || input.nil?
-      log usage
-      exit
+      help :score
+      exit 1
     end
 
     model = Model.load(model_path)
     model.score_interest(input)
   end
 
+  HELP.archive = <<-STR
+    Usage: ebooks archive <username> <outpath>
+
+    Downloads a json corpus of the <username>'s tweets to <outpath>.
+    Due to API limitations, this can only receive up to ~3000 tweets
+    into the past.
+  STR
+
   def self.archive(username, outpath)
-    usage = <<STR
-Usage: ebooks archive <username> <outpath>
-
-Downloads a json corpus of the <username>'s tweets to <outpath>.
-Due to API limitations, this can only receive up to ~3000 tweets
-into the past.
-STR
-
     if username.nil? || outpath.nil?
-      log usage
-      exit
+      help :archive
+      exit 1
     end
 
     Archive.new(username, outpath).sync
   end
 
+  HELP.tweet = <<-STR
+    Usage: ebooks tweet <model_path> <botname>
+
+    Sends a public tweet from the specified bot using text
+    from the processed model at <model_path>.
+  STR
+
   def self.tweet(modelpath, botname)
-    usage = <<STR
-Usage: ebooks tweet <model_path> <botname>
-
-Sends a public tweet from the specified bot using text
-from the processed model at <model_path>.
-STR
-
     if modelpath.nil? || botname.nil?
-      log usage
-      exit
+      help :tweet
+      exit 1
     end
 
     load File.join(APP_PATH, 'bots.rb')
@@ -162,6 +187,15 @@ STR
     bot.configure
     bot.tweet(statement)
   end
+
+  HELP.auth = <<-STR
+    Usage: ebooks auth
+
+    Authenticates your Twitter app for any account. By default, will
+    use the consumer key and secret from the first defined bot. You
+    can specify another by setting the CONSUMER_KEY and CONSUMER_SECRET
+    environment variables.
+  STR
 
   def self.auth
     consumer_key, consumer_secret = find_consumer
@@ -196,9 +230,59 @@ STR
          "  access token secret: #{access_token.secret}"
   end
 
-  def self.c
+  HELP.console = <<-STR
+    Usage: ebooks c[onsole]
+
+    Starts an interactive ruby session with your bots loaded
+    and configured.
+  STR
+
+  def self.console
     load_bots
-    require 'pry'; pry
+    require 'pry'; Ebooks.module_exec { pry }
+  end
+
+  HELP.start = <<-STR
+    Usage: ebooks s[tart] [botname]
+
+    Starts running bots. If botname is provided, only runs that bot.
+  STR
+
+  def self.start(botname=nil)
+    load_bots
+
+    if botname.nil?
+      bots = Ebooks::Bot.all
+    else
+      bots = bots.select { |bot| bot.username == botname }
+      if bots.empty?
+        log "Couldn't find a defined bot for @#{botname}!"
+        exit 1
+      end
+    end
+
+    threads = []
+    bots.each do |bot|
+      threads << Thread.new { bot.prepare }
+    end
+    threads.each(&:join)
+
+    threads = []
+    bots.each do |bot|
+      threads << Thread.new do
+        loop do
+          begin
+            bot.start
+          rescue Exception
+            bot.log $!
+            puts $@
+          end
+          bot.log "Sleeping before reconnect"
+          sleep 5
+        end
+      end
+    end
+    threads.each(&:join)
   end
 
   # Non-command methods
@@ -229,7 +313,7 @@ STR
       log "Couldn't find any consumer details to auth an account with.\n" +
           "Please either configure a bot with consumer_key and consumer_secret\n" +
           "or provide the CONSUMER_KEY and CONSUMER_SECRET environment variables."
-      exit
+      exit 1
     end
   end
 
@@ -242,20 +326,9 @@ STR
   end
 
   def self.command(args)
-    usage = <<STR
-Usage:
-     ebooks new <reponame>
-     ebooks consume <corpus_path> [corpus_path2] [...]
-     ebooks consume-all <corpus_path> [corpus_path2] [...]
-     ebooks gen <model_path> [input]
-     ebooks score <model_path> <input>
-     ebooks archive <@user> <outpath>
-     ebooks tweet <model_path> <botname>
-STR
-
     if args.length == 0
-      log usage
-      exit
+      help
+      exit 1
     end
 
     case args[0]
@@ -268,9 +341,14 @@ STR
     when "tweet" then tweet(args[1], args[2])
     when "jsonify" then jsonify(args[1..-1])
     when "auth" then auth
-    when "c" then c
+    when "console" then console
+    when "c" then console
+    when "start" then start
+    when "s" then start
+    when "help" then help(args[1])
     else
-      log usage
+      log "No such command '#{args[0]}'"
+      help
       exit 1
     end
   end
