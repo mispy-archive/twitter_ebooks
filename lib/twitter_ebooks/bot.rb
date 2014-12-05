@@ -6,28 +6,11 @@ module Ebooks
   class ConfigurationError < Exception
   end
 
-  # Information about a particular Twitter user we know
-  class UserInfo
-    attr_reader :username
-
-    # @return [Integer] how many times we can pester this user unprompted
-    attr_accessor :pesters_left
-
-    def initialize(username)
-      @username = username
-      @pesters_left = 1
-    end
-
-    # @return [Boolean] true if we're allowed to pester this user
-    def can_pester?
-      @pesters_left > 0
-    end
-  end
-
   # Represents a single reply tree of tweets
   class Conversation
     attr_reader :last_update
 
+    # @param bot [Ebooks::Bot]
     def initialize(bot)
       @bot = bot
       @tweets = []
@@ -90,6 +73,8 @@ module Ebooks
       @mentions.map(&:downcase).include?(@bot.username.downcase) && !@tweet.retweeted_status? && !@tweet.text.start_with?('RT ')
     end
 
+    # @param bot [Ebooks::Bot]
+    # @param ev [Twitter::Tweet]
     def initialize(bot, ev)
       @bot = bot
       @tweet = ev
@@ -138,7 +123,7 @@ module Ebooks
     # @return [Hash{String => Ebooks::Conversation}] maps tweet ids to their conversation contexts
     attr_accessor :conversations
     # @return [Range, Integer] range of seconds to delay in delay method
-    attr_accessor :delay
+    attr_accessor :delay_range
 
     # @return [Array] list of all defined bots
     def self.all; @@all ||= []; end
@@ -161,22 +146,15 @@ module Ebooks
     # @param b Block to call with new bot
     def initialize(username, &b)
       @blacklist ||= []
-      @userinfo ||= {}
       @conversations ||= {}
       # Tweet ids we've already observed, to avoid duplication
       @seen_tweets ||= {}
 
       @username = username
-      configure(*args, &b)
+      configure
 
+      b.call(self) unless b.nil?
       Bot.all << self
-    end
-
-    # Find information we've collected about a user
-    # @param username [String]
-    # @return [Ebooks::UserInfo]
-    def userinfo(username)
-      @userinfo[username] ||= UserInfo.new(username)
     end
 
     # Find or create the conversation context for this tweet
@@ -229,7 +207,7 @@ module Ebooks
     # Calculate some meta information about a tweet relevant for replying
     # @param ev [Twitter::Tweet]
     # @return [Ebooks::TweetMeta]
-    def calc_meta(ev)
+    def meta(ev)
       TweetMeta.new(self, ev)
     end
 
@@ -255,7 +233,7 @@ module Ebooks
         return unless ev.text # If it's not a text-containing tweet, ignore it
         return if ev.user.screen_name == @username # Ignore our own tweets
 
-        meta = calc_meta(ev)
+        meta = meta(ev)
 
         if blacklisted?(ev.user.screen_name)
           log "Blocking blacklisted user @#{ev.user.screen_name}"
@@ -273,9 +251,9 @@ module Ebooks
         if meta.mentions_bot?
           log "Mention from @#{ev.user.screen_name}: #{ev.text}"
           conversation(ev).add(ev)
-          fire(:mention, ev, meta)
+          fire(:mention, ev)
         else
-          fire(:timeline, ev, meta)
+          fire(:timeline, ev)
         end
 
       elsif ev.is_a?(Twitter::Streaming::DeletedTweet) ||
@@ -290,7 +268,19 @@ module Ebooks
     def prepare
       # Sanity check
       if @username.nil?
-        raise ConfigurationError, "bot.username cannot be nil"
+        raise ConfigurationError, "bot username cannot be nil"
+      end
+
+      if @consumer_key.nil? || @consumer_key.empty? ||
+         @consumer_secret.nil? || @consumer_key.empty?
+        log "Missing consumer_key or consumer_secret. These details can be acquired by registering a Twitter app at https://apps.twitter.com/"
+        exit 1
+      end
+
+      if @access_token.nil? || @access_token.empty? ||
+         @access_token_secret.nil? || @access_token_secret.empty?
+        log "Missing access_token or access_token_secret. Please run `ebooks auth`."
+        exit 1
       end
 
       twitter
@@ -346,18 +336,11 @@ module Ebooks
         log "Sending DM to @#{ev.sender.screen_name}: #{text}"
         twitter.create_direct_message(ev.sender.screen_name, text, opts)
       elsif ev.is_a? Twitter::Tweet
-        meta = calc_meta(ev)
+        meta = meta(ev)
 
         if conversation(ev).is_bot?(ev.user.screen_name)
           log "Not replying to suspected bot @#{ev.user.screen_name}"
           return false
-        end
-
-        if !meta.mentions_bot?
-          if !userinfo(ev.user.screen_name).can_pester?
-            log "Not replying: leaving @#{ev.user.screen_name} alone"
-            return false
-          end
         end
 
         log "Replying to @#{ev.user.screen_name} with: #{meta.reply_prefix + text}"

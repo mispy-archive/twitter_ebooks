@@ -39,9 +39,14 @@ module Ebooks
       end
     end
 
-    def initialize(username, path, client=nil)
+    def initialize(username, path=nil, client=nil)
       @username = username
-      @path = path || "#{username}.json"
+      @path = path || "corpus/#{username}.json"
+
+      if File.directory?(@path)
+        @path = File.join(@path, "#{username}.json")
+      end
+
       @client = client || make_client
 
       if File.exists?(@path)

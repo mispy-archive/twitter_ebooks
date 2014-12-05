@@ -8,8 +8,11 @@ A framework for building interactive twitterbots which respond to mentions/DMs. 
 
 ## New in 3.0
 
-- Bots now run in their own threads (no eventmachine), and startup is parallelized
-- Replies are slightly rate-limited by default to prevent infinite bot convos
+- Bots run in their own threads (no eventmachine), and startup is parallelized
+- Bots start with `ebooks start`, and no longer die on unhandled exceptions
+- `ebooks auth` command will create new access tokens, for running multiple bots
+- `ebooks console` starts a ruby interpreter with bots loaded (see Ebooks::Bot.all)
+- Replies are slightly rate-limited to prevent infinite bot convos
 - Non-participating users in a mention chain will be dropped after a few tweets
 
 ## Installation
@@ -26,47 +29,57 @@ Run `ebooks new <reponame>` to generate a new repository containing a sample bot
 
 ``` ruby
 # This is an example bot definition with event handlers commented out
-# You can define as many of these as you like; they will run simultaneously
+# You can define and instantiate as many bots as you like
 
-Ebooks::Bot.new("abby_ebooks") do |bot|
-  # Consumer details come from registering an app at https://dev.twitter.com/
-  # OAuth details can be fetched with https://github.com/marcel/twurl
-  bot.consumer_key = "" # Your app consumer key
-  bot.consumer_secret = "" # Your app consumer secret
-  bot.oauth_token = "" # Token connecting the app to this account
-  bot.oauth_token_secret = "" # Secret connecting the app to this account
+class MyBot < Ebooks::Bot
+  # Configuration here applies to all MyBots
+  def configure
+    # Consumer details come from registering an app at https://dev.twitter.com/
+    # Once you have consumer details, use "ebooks auth" for new access tokens
+    self.consumer_key = '' # Your app consumer key
+    self.consumer_secret = '' # Your app consumer secret
 
-  bot.on_startup do
-    # Run some startup task
-    # puts "I'm ready!"
+    # Users to block instead of interacting with
+    self.blacklist = ['tnietzschequote']
+
+    # Range in seconds to randomize delay when bot.delay is called
+    self.delay_range = 1..6
   end
 
-  bot.on_message do |dm|
+  def on_startup
+    scheduler.every '24h' do
+      # Tweet something every 24 hours
+      # See https://github.com/jmettraux/rufus-scheduler
+      # bot.tweet("hi")
+      # bot.pictweet("hi", "cuteselfie.jpg")
+    end
+  end
+
+  def on_message(dm)
     # Reply to a DM
     # bot.reply(dm, "secret secrets")
   end
 
-  bot.on_follow do |user|
+  def on_follow(user)
     # Follow a user back
     # bot.follow(user[:screen_name])
   end
 
-  bot.on_mention do |tweet, meta|
+  def on_mention(tweet)
     # Reply to a mention
-    # bot.reply(tweet, meta[:reply_prefix] + "oh hullo")
+    # bot.reply(tweet, meta(tweet)[:reply_prefix] + "oh hullo")
   end
 
-  bot.on_timeline do |tweet, meta|
+  def on_timeline(tweet)
     # Reply to a tweet in the bot's timeline
-    # bot.reply(tweet, meta[:reply_prefix] + "nice tweet")
+    # bot.reply(tweet, meta(tweet)[:reply_prefix] + "nice tweet")
   end
+end
 
-  bot.scheduler.every '24h' do
-    # Tweet something every 24 hours
-    # See https://github.com/jmettraux/rufus-scheduler
-    # bot.tweet("hi")
-	# bot.pictweet("hi", "cuteselfie.jpg", ":possibly_sensitive => true")
-  end
+# Make a MyBot and attach it to an account
+MyBot.new("{{BOT_NAME}}") do |bot|
+  bot.access_token = "" # Token connecting the app to this account
+  bot.access_token_secret = "" # Secret connecting the app to this account
 end
 ```
 
@@ -107,7 +120,6 @@ Text files use newlines and full stops to seperate statements.
 Once you have a model, the primary use is to produce statements and related responses to input, using a pseudo-Markov generator:
 
 ``` ruby
-> require 'twitter_ebooks'
 > model = Ebooks::Model.load("model/0xabad1dea.model")
 > model.make_statement(140)
 => "My Terrible Netbook may be the kind of person who buys Starbucks, but this Rackspace vuln is pretty straight up a backdoor"
@@ -118,13 +130,17 @@ Once you have a model, the primary use is to produce statements and related resp
 The secondary function is the "interesting keywords" list. For example, I use this to determine whether a bot wants to fav/retweet/reply to something in its timeline:
 
 ``` ruby
-top100 = model.keywords.top(100)
+top100 = model.keywords.take(100)
 tokens = Ebooks::NLP.tokenize(tweet[:text])
 
 if tokens.find { |t| top100.include?(t) }
-  bot.twitter.favorite(tweet[:id])
+  bot.favorite(tweet[:id])
 end
 ```
+
+## Bot niceness
+
+
 
 ## Other notes
 

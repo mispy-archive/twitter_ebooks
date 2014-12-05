@@ -7,7 +7,6 @@ class TestBot < Ebooks::Bot
   attr_accessor :twitter
 
   def configure
-    self.username = "test_ebooks"
   end
 
   def on_direct_message(dm)
@@ -84,7 +83,7 @@ end
 
 describe Ebooks::Bot do
   include Ebooks::Test
-  let(:bot) { TestBot.new }
+  let(:bot) { TestBot.new('test_ebooks') }
 
   before { Timecop.freeze }
   after { Timecop.return }

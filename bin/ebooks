@@ -4,6 +4,12 @@
 require 'twitter_ebooks'
 require 'ostruct'
 
+module Ebooks::Util
+  def pretty_exception(e)
+
+  end
+end
+
 module Ebooks::CLI
   APP_PATH = Dir.pwd # XXX do some recursive thing instead
   HELP = OpenStruct.new
@@ -17,8 +23,7 @@ Usage:
      ebooks consume <corpus_path> [corpus_path2] [...]
      ebooks consume-all <corpus_path> [corpus_path2] [...]
      ebooks gen <model_path> [input]
-     ebooks score <model_path> <input>
-     ebooks archive <username> <outpath>
+     ebooks archive <username> [path]
      ebooks tweet <model_path> <botname>
 STR
 
@@ -50,11 +55,16 @@ STR
       exit 1
     end
 
-    FileUtils.cp_r(SKELETON_PATH, path)
+    FileUtils.cp_r(Ebooks::SKELETON_PATH, path)
 
     File.open(File.join(path, 'bots.rb'), 'w') do |f|
-      template = File.read(File.join(SKELETON_PATH, 'bots.rb'))
+      template = File.read(File.join(Ebooks::SKELETON_PATH, 'bots.rb'))
       f.write(template.gsub("{{BOT_NAME}}", reponame))
+    end
+
+    File.open(File.join(path, 'Gemfile'), 'w') do |f|
+      template = File.read(File.join(Ebooks::SKELETON_PATH, 'Gemfile'))
+      f.write(template.gsub("{{RUBY_VERSION}}", RUBY_VERSION))
     end
 
     log "New twitter_ebooks app created at #{reponame}"
@@ -78,7 +88,7 @@ STR
       shortname = filename.split('.')[0..-2].join('.')
 
       outpath = File.join(APP_PATH, 'model', "#{shortname}.model")
-      Model.consume(path).save(outpath)
+      Ebooks::Model.consume(path).save(outpath)
       log "Corpus consumed to #{outpath}"
     end
   end
@@ -97,15 +107,7 @@ STR
     end
 
     outpath = File.join(APP_PATH, 'model', "#{name}.model")
-    #pathes.each do |path|
-    #  filename = File.basename(path)
-    #  shortname = filename.split('.')[0..-2].join('.')
-    #
-    #  outpath = File.join(APP_PATH, 'model', "#{shortname}.model")
-    #  Model.consume(path).save(outpath)
-    #  log "Corpus consumed to #{outpath}"
-    #end
-    Model.consume_all(paths).save(outpath)
+    Ebooks::Model.consume_all(paths).save(outpath)
     log "Corpuses consumed to #{outpath}"
   end
 
@@ -122,7 +124,7 @@ STR
       exit 1
     end
 
-    model = Model.load(model_path)
+    model = Ebooks::Model.load(model_path)
     if input && !input.empty?
       puts "@cmd " + model.make_response(input, 135)
     else
@@ -130,38 +132,22 @@ STR
     end
   end
 
-  HELP.score = <<-STR
-    Usage: ebooks score <model_path> <input>
-
-    Scores "interest" in some text input according to how
-    well unique keywords match the model.
-  STR
-
-  def self.score(model_path, input)
-    if model_path.nil? || input.nil?
-      help :score
-      exit 1
-    end
-
-    model = Model.load(model_path)
-    model.score_interest(input)
-  end
-
   HELP.archive = <<-STR
-    Usage: ebooks archive <username> <outpath>
+    Usage: ebooks archive <username> [outpath]
 
-    Downloads a json corpus of the <username>'s tweets to <outpath>.
+    Downloads a json corpus of the <username>'s tweets.
+    Output defaults to corpus/<username>.json
     Due to API limitations, this can only receive up to ~3000 tweets
     into the past.
   STR
 
-  def self.archive(username, outpath)
-    if username.nil? || outpath.nil?
+  def self.archive(username, outpath=nil)
+    if username.nil?
       help :archive
       exit 1
     end
 
-    Archive.new(username, outpath).sync
+    Ebooks::Archive.new(username, outpath).sync
   end
 
   HELP.tweet = <<-STR
@@ -178,10 +164,9 @@ STR
     end
 
     load File.join(APP_PATH, 'bots.rb')
-    model = Model.load(modelpath)
+    model = Ebooks::Model.load(modelpath)
     statement = model.make_statement
-    log "@#{botname}: #{statement}"
-    bot = Bot.get(botname)
+    bot = Ebooks::Bot.get(botname)
     bot.configure
     bot.tweet(statement)
   end
@@ -223,7 +208,7 @@ STR
 
     access_token = request_token.get_access_token(oauth_verifier: pin)
 
-    log "Account authorized successfully.\n" +
+    log "Account authorized successfully. Make sure to put these in your bots.rb!\n" +
          "  access token: #{access_token.token}\n" +
          "  access token secret: #{access_token.secret}"
   end
@@ -271,9 +256,9 @@ STR
         loop do
           begin
             bot.start
-          rescue Exception
-            bot.log $!
-            puts $@
+          rescue Exception => e
+            bot.log e.inspect
+            puts e.backtrace.map { |s| "\t"+s }.join("\n")
           end
           bot.log "Sleeping before reconnect"
           sleep 5
@@ -334,7 +319,6 @@ STR
     when "consume" then consume(args[1..-1])
     when "consume-all" then consume_all(args[1], args[2..-1])
     when "gen" then gen(args[1], args[2..-1].join(' '))
-    when "score" then score(args[1], args[2..-1].join(' '))
     when "archive" then archive(args[1], args[2])
     when "tweet" then tweet(args[1], args[2])
     when "jsonify" then jsonify(args[1..-1])
