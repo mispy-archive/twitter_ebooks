@@ -4,7 +4,7 @@
 [![Build Status](https://travis-ci.org/mispy/twitter_ebooks.svg)](https://travis-ci.org/mispy/twitter_ebooks)
 [![Dependency Status](https://gemnasium.com/mispy/twitter_ebooks.svg)](https://gemnasium.com/mispy/twitter_ebooks)
 
-A framework for building interactive twitterbots which respond to mentions/DMs. twitter_ebooks tries to be a good friendly bot citizen by avoiding infinite conversations and spamming people, so you only have to write the interesting parts.
+A framework for building interactive twitterbots which respond to mentions/DMs. See [ebooks_example](https://github.com/mispy/ebooks_example) for a fully-fledged bot definition.
 
 ## New in 3.0
 
@@ -14,6 +14,9 @@ A framework for building interactive twitterbots which respond to mentions/DMs. 
 - `ebooks console` starts a ruby interpreter with bots loaded (see Ebooks::Bot.all)
 - Replies are slightly rate-limited to prevent infinite bot convos
 - Non-participating users in a mention chain will be dropped after a few tweets
+- [API documentation](http://rdoc.info/github/mispy/twitter_ebooks)
+
+Note that 3.0 is not backwards compatible with 2.x, so upgrade carefully!
 
 ## Installation
 
@@ -140,8 +143,4 @@ end
 
 ## Bot niceness
 
-
-
-## Other notes
-
-If you're using Heroku, which has no persistent filesystem, automating the process of archiving, consuming and updating can be tricky. My current solution is just a daily cron job which commits and pushes for me, which is pretty hacky.
+twitter_ebooks will drop bystanders from mentions for you and avoid infinite bot conversations, but it won't prevent you from doing a lot of other spammy things. Make sure your bot is a good and polite citizen!
