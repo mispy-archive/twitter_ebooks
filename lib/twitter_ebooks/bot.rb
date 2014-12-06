@@ -429,9 +429,10 @@ module Ebooks
       log "Tweeting '#{txt}' and #{pic.length} images: #{images_to_tweet_for_log}"
 
       # The Twitter website currently has a bug with displaying multiple images if a tweet is marked as possibly_sensitive
-      if pic.length > 1 && opt_update[:possibly_sensitive]
-        log 'Warning: Tweets with multiple images might not show up properly on all devices if :possibly_sensitive is enabled.'
-      end
+      #
+      # if pic.length > 1 && opt_update[:possibly_sensitive]
+      #   log 'Warning: Tweets with multiple images might not show up properly on all devices if :possibly_sensitive is enabled.'
+      # end
 
       # Create an array to store picture IDs
       pic_id = []
