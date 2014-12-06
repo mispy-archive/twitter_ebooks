@@ -70,7 +70,7 @@ module Ebooks
       # - The tweet mentions list contains our username
       # - The tweet is not being retweeted by somebody else
       # - Or soft-retweeted by somebody else
-      @mentions.map(&:downcase).include?(@bot.username.downcase) && !@tweet.retweeted_status? && !@tweet.text.start_with?('RT ')
+      @mentions.map(&:downcase).include?(@bot.username.downcase) && !@tweet.retweeted_status? && !@tweet.text.start_with?('RT ') && !@tweet.text =~ /([`'‘’"“”]|RT|via|by|from)\s*@/i
     end
 
     # @param bot [Ebooks::Bot]
