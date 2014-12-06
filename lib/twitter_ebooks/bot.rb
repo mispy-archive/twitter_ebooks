@@ -417,7 +417,7 @@ module Ebooks
     def pictweet(txt, pic, *args)
       # Set opt_update to first *args argument or an empty hash
       opt_update = args[0].is_a?(Hash) ? args[0] : {}
-      # Set opt_update to second *args argument or an empty hash
+      # Set opt_upload to second *args argument or an empty hash
       opt_upload = args[1].is_a?(Hash) ? args[1] : {}
 
       # If pic isn't an array, make it one.
