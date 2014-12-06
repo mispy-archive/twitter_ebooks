@@ -414,6 +414,7 @@ module Ebooks
     # @param pic [String] or [[String]] filename
     # @param opt_update [Hash] options passed to update (optional)
     # @param opt_upload [Hash] options passed to upload (twitter gem supports this, but I'm not even sure what it's for)
+    # @block If you attach a block, you'll be given relative filenames before they get uploaded, so you can process them first!
     def pictweet(txt, pic, *args)
       # Set opt_update to first *args argument or an empty hash
       opt_update = args[0].is_a?(Hash) ? args[0] : {}
@@ -439,14 +440,46 @@ module Ebooks
       pic.each do |each_pic|
         # Convert it to a string first
         each_pic_string = each_pic.to_s
-        # Is the file a URL or a filename?
+
+        # Is the file a URL?
         if each_pic_string.match /^https?:\/\//i # Starts with http(s)://, case insensitive
-          # Try to download picture
-          each_pic_picture = File.new pictweet_download(each_pic_string)
+          # Try to download the picture
+          begin
+            each_pic_string_temp = pictweet_download(each_pic_string)
+          rescue
+            # Skip if something went wrong
+            next
+          end
         else
-          # Try to load picture
-          each_pic_picture = File.new each_pic_string
+          # Find file extension
+          if each_pic_string.match /(\.[A-z]+)$/
+            extension = $1
+          else
+            extension = ''
+          end
+
+          # Create copy of file
+          each_pic_string_temp = pictweet_next_file_name extension
+
+          begin
+            FileUtils.copy(each_pic_string, each_pic_string_temp)
+          rescue
+            # Skip if something went wrong
+            next
+          end
         end
+
+        # Pass file to block for manipulation
+        yield each_pic_string_temp if block_given?
+
+        # Try to load the picture
+        begin
+          each_pic_picture = File.new each_pic_string_temp
+        rescue
+          # Skip over this if it's not loadable
+          next
+        end
+
         # Upload it, and store its ID from Twitter
         pic_id << twitter.upload(each_pic_picture, opt_upload)
 
@@ -454,11 +487,11 @@ module Ebooks
         each_pic_picture.close
       end
 
-      # Did any of the file fetching thingies work?
-      raise 'Couldn\'t load any of the images provided.' if pic_id.empty?
-
       # Clean up pictweet_temp folder if it exists.
       pictweet_temp_delete
+
+      # Did any of the file fetching thingies work?
+      raise 'Couldn\'t load any of the images provided.' if pic_id.empty?
 
       # Prepare media_ids for uploading.
       opt_update[:media_ids] = pic_id.join ',' # This will replace media_ids if it was passed into this method, but I don't know why anyone would do that.
@@ -470,17 +503,13 @@ module Ebooks
     def pictweet_download(uri_string)
       # Add in Ruby's library for downloading stuff!
       require 'net/http'
-      # Create temporary image directory if it doesn't already exist.
-      Dir.mkdir(pictweet_temp_folder) unless Dir.exists? pictweet_temp_folder
-
-      # Create a filename (or a current download number)
-      @pictweet_download_number = @pictweet_download_number.to_i.next
-      pictweet_file_name = "#{pictweet_temp_folder}/#{@pictweet_download_number}"
 
       # Create URI object to download file with
       uri_object = URI(uri_string)
+      # Create a local variable for file name
+      pictweet_file_name = ''
       # Keep track of when we started downloading
-      before_download = Time.now
+      # before_download = Time.now
       # Open download thingie
       Net::HTTP.start(uri_object.host, uri_object.port) do |http|
         http.request Net::HTTP::Get.new(uri_object) do |response|
@@ -489,11 +518,11 @@ module Ebooks
           # Check file format
           case response['content-type']
           when 'image/jpeg'
-            pictweet_file_name += '.jpg'
+            pictweet_file_name = pictweet_next_file_name '.jpg'
           when 'image/png'
-            pictweet_file_name += '.png'
+            pictweet_file_name = pictweet_next_file_name '.png'
           when 'image/gif'
-            pictweet_file_name += '.gif'
+            pictweet_file_name = pictweet_next_file_name '.gif'
           else
             # No other formats supported for now
             raise "'#{uri_string}' is an unsupported content-type: '#{response['content-type']}'"
@@ -512,11 +541,23 @@ module Ebooks
       raise "'#{uri_string}' produced an empty file" if filesize == 0
 
       # How long did it take?
-      download_time = Time.now - before_download
-      log "Downloaded #{uri_string} (#{filesize}kb) in #{download_time.to_f}s"
+      # download_time = Time.now - before_download
+      # log "Downloaded #{uri_string} (#{filesize}kb) in #{download_time.to_f}s"
 
       # If we survived this long, everything is all set!
       pictweet_file_name
+    end
+
+    # Create the next file name inside temp folder
+    # Optional argument: extension (include the dot)
+    def pictweet_next_file_name(*args)
+      # Create temporary image directory if it doesn't already exist.
+      Dir.mkdir(pictweet_temp_folder) unless Dir.exists? pictweet_temp_folder
+
+      extension = args.length > 0 ? args[0].to_s : ''
+
+      @pictweet_download_number = @pictweet_download_number.to_i.next
+      "#{pictweet_temp_folder}/#{@pictweet_download_number}#{extension}"
     end
 
     # Pictweet directory name
@@ -527,7 +568,12 @@ module Ebooks
       current_count = 0
       name_base = 'pictweet_temp'
       @pictweet_temp_folder_name = name_base
-      while File.exists?(@pictweet_temp_folder_name) 
+
+      # Keep looking for a folder that doesn't exist
+      while File.exists?(@pictweet_temp_folder_name)
+        # If a folder exists, but it's empty, that's fine.
+        break if Dir.exists?(pictweet_temp_folder) && Dir.entries(pictweet_temp_folder).length < 3
+        # Otherwise, add 1 and keep looking.
         @pictweet_temp_folder_name = "#{name_base}_#{current_count.to_s}"
         current_count += 1
       end
