@@ -23,7 +23,6 @@ Gem::Specification.new do |gem|
   gem.add_development_dependency 'yard'
 
   gem.add_runtime_dependency 'twitter', '~> 5.0'
-  gem.add_runtime_dependency 'simple_oauth'
   gem.add_runtime_dependency 'eventmachine', '~> 1.0.3'
   gem.add_runtime_dependency 'rufus-scheduler'
   gem.add_runtime_dependency 'gingerice'
@@ -32,4 +31,5 @@ Gem::Specification.new do |gem|
   gem.add_runtime_dependency 'fast-stemmer'
   gem.add_runtime_dependency 'highscore'
   gem.add_runtime_dependency 'pry'
+  gem.add_runtime_dependency 'oauth'
 end
