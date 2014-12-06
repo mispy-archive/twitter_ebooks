@@ -411,10 +411,41 @@ module Ebooks
 
     # Tweet some text with an image
     # @param txt [String]
-    # @param pic [String] filename
+    # @param pic [String] or [[String]] filename
+    # @param opt_update [Hash] options passed to update (optional)
+    # @param opt_upload [Hash] options passed to upload (twitter gem supports this, but I'm not even sure what it's for)
     def pictweet(txt, pic, *args)
-      log "Tweeting #{txt.inspect} - #{pic} #{args}"
-      twitter.update_with_media(txt, File.new(pic), *args)
+      # Set opt_update to first *args argument or an empty hash
+      opt_update = args[0].is_a?(Hash) ? args[0] : {}
+      # Set opt_update to second *args argument or an empty hash
+      opt_upload = args[1].is_a?(Hash) ? args[1] : {}
+
+      # If pic isn't an array, make it one.
+      pic = [pic] unless pic.is_a? Array
+      # Currently, only this many images are allowed per tweet.
+      pic = pic[0...4] unless pic.length < 4 # Using three dots in range so both numbers can be the same (less confusion)
+
+      images_to_tweet_for_log = pic.join ' '
+      log "Tweeting '#{txt}' and #{pic.length} images: #{images_to_tweet_for_log}"
+
+      # The Twitter website currently has a bug with displaying multiple images if a tweet is marked as possibly_sensitive
+      if pic.length > 1 && opt_update[:possibly_sensitive]
+        log 'Warning: Tweets with multiple images might not show up properly on all devices if :possibly_sensitive is enabled.'
+      end
+
+      # Create an array to store picture IDs
+      pic_id = []
+      pic.each do |each_pic|
+        # Try to find the file.
+        each_pic_picture = File.new each_pic.to_s
+        # Upload it, and store its ID from Twitter.
+        pic_id << twitter.upload(each_pic_picture, opt_upload)
+      end
+
+      # Prepare media_ids for uploading.
+      opt_update[:media_ids] = pic_id.join ',' # This will replace media_ids if it was passed into this method, but I don't know why anyone would do that.
+
+      twitter.update(txt, opt_update)
     end
   end
 end
