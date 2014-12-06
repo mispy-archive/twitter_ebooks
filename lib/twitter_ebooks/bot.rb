@@ -481,7 +481,12 @@ module Ebooks
         end
 
         # Upload it, and store its ID from Twitter
-        pic_id << twitter.upload(each_pic_picture, opt_upload)
+        begin
+          pic_id << twitter.upload(each_pic_picture, opt_upload)
+        rescue
+          # Hopefully at least one upload will work!
+          next
+        end
 
         # Close file handle
         each_pic_picture.close
