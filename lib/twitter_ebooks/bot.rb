@@ -437,16 +437,123 @@ module Ebooks
       # Create an array to store picture IDs
       pic_id = []
       pic.each do |each_pic|
-        # Try to find the file.
-        each_pic_picture = File.new each_pic.to_s
-        # Upload it, and store its ID from Twitter.
+        # Convert it to a string first
+        each_pic_string = each_pic.to_s
+        # Is the file a URL or a filename?
+        if each_pic_string.match /^https?:\/\//i # Starts with http(s)://, case insensitive
+          # Try to download picture
+          each_pic_picture = File.new pictweet_download(each_pic_string)
+        else
+          # Try to load picture
+          each_pic_picture = File.new each_pic_string
+        end
+        # Upload it, and store its ID from Twitter
         pic_id << twitter.upload(each_pic_picture, opt_upload)
+
+        # Close file handle
+        each_pic_picture.close
       end
+
+      # Did any of the file fetching thingies work?
+      raise 'Couldn\'t load any of the images provided.' if pic_id.empty?
+
+      # Clean up pictweet_temp folder if it exists.
+      pictweet_temp_delete
 
       # Prepare media_ids for uploading.
       opt_update[:media_ids] = pic_id.join ',' # This will replace media_ids if it was passed into this method, but I don't know why anyone would do that.
 
       twitter.update(txt, opt_update)
+    end
+
+    # Download an image for use with pictweet
+    def pictweet_download(uri_string)
+      # Add in Ruby's library for downloading stuff!
+      require 'net/http'
+      # Create temporary image directory if it doesn't already exist.
+      Dir.mkdir(pictweet_temp_folder) unless Dir.exists? pictweet_temp_folder
+
+      # Create a filename (or a current download number)
+      @pictweet_download_number = @pictweet_download_number.to_i.next
+      pictweet_file_name = "#{pictweet_temp_folder}/#{@pictweet_download_number}"
+
+      # Create URI object to download file with
+      uri_object = URI(uri_string)
+      # Keep track of when we started downloading
+      before_download = Time.now
+      # Open download thingie
+      Net::HTTP.start(uri_object.host, uri_object.port) do |http|
+        http.request Net::HTTP::Get.new(uri_object) do |response|
+          # Cancel if something goes wrong.
+          raise "'#{uri_string}' caused HTTP Error #{response.code}: #{response.msg}" unless response.code == '200'
+          # Check file format
+          case response['content-type']
+          when 'image/jpeg'
+            pictweet_file_name += '.jpg'
+          when 'image/png'
+            pictweet_file_name += '.png'
+          when 'image/gif'
+            pictweet_file_name += '.gif'
+          else
+            # No other formats supported for now
+            raise "'#{uri_string}' is an unsupported content-type: '#{response['content-type']}'"
+          end
+
+          # Now write to file!
+          open(pictweet_file_name, 'w') do |file|
+            response.read_body do |chunk|
+              file.write chunk
+            end
+          end
+        end
+      end
+      # If filesize is empty, something went wrong.
+      filesize = File.size(pictweet_file_name)/1024
+      raise "'#{uri_string}' produced an empty file" if filesize == 0
+
+      # How long did it take?
+      download_time = Time.now - before_download
+      log "Downloaded #{uri_string} (#{filesize}kb) in #{download_time.to_f}s"
+
+      # If we survived this long, everything is all set!
+      pictweet_file_name
+    end
+
+    # Pictweet directory name
+    def pictweet_temp_folder
+      # If we already have one, just return it.
+      return @pictweet_temp_folder_name if defined? @pictweet_temp_folder_name
+
+      current_count = 0
+      name_base = 'pictweet_temp'
+      @pictweet_temp_folder_name = name_base
+      while File.exists?(@pictweet_temp_folder_name) 
+        @pictweet_temp_folder_name = "#{name_base}_#{current_count.to_s}"
+        current_count += 1
+      end
+
+      @pictweet_temp_folder_name
+    end
+
+    # Delete temporary pictweet files
+    def pictweet_temp_delete
+      # Don't do anything if pictweet_temp doesn't exist
+      return unless Dir.exists? pictweet_temp_folder
+
+      # Recurse over folder
+      Dir.foreach(pictweet_temp_folder) do |filename|
+        # Ignore . and .. entries
+        next if filename == '.' || filename == '..'
+        # Delete the rest!
+        begin
+          File.delete "#{pictweet_temp_folder}/#{filename}"
+        rescue
+          # This can happen if a file is locked. Delete it next time.
+        end
+
+        # Remove the directory if it's empty now.
+        Dir.rmdir(pictweet_temp_folder) if Dir.entries(pictweet_temp_folder).length < 3
+      end
     end
   end
 end
