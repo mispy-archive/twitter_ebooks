@@ -411,9 +411,9 @@ module Ebooks
 
     # Tweet some text with an image
     # @param txt [String]
-    # @param pic [String] or [[String]] filename
-    # @param opt_update [Hash] options passed to update (optional)
-    # @param opt_upload [Hash] options passed to upload (twitter gem supports this, but I'm not even sure what it's for)
+    # @param pic [Array<String>] can also be a string. filename
+    # @param opt_update [Hash] optional. options passed to update
+    # @param opt_upload [Hash] optional. options passed to upload
     # @block If you attach a block, you'll be given relative filenames before they get uploaded, so you can process them first!
     def pictweet(txt, pic, *args)
       # Set opt_update to first *args argument or an empty hash
@@ -505,6 +505,8 @@ module Ebooks
     end
 
     # Download an image for use with pictweet
+    # @param uri_string [String] URI of image to download
+    # @return [String] filename of downloaded file
     def pictweet_download(uri_string)
       # Add in Ruby's library for downloading stuff!
       require 'net/http'
@@ -554,7 +556,8 @@ module Ebooks
     end
 
     # Create the next file name inside temp folder
-    # Optional argument: extension (include the dot)
+    # @param extension [String] file extension. don't forget to include the dot before its letters
+    # @return [String] filename
     def pictweet_next_file_name(*args)
       # Create temporary image directory if it doesn't already exist.
       Dir.mkdir(pictweet_temp_folder) unless Dir.exists? pictweet_temp_folder
@@ -566,6 +569,7 @@ module Ebooks
     end
 
     # Pictweet directory name
+    # @return [String] name of directory
     def pictweet_temp_folder
       # If we already have one, just return it.
       return @pictweet_temp_folder_name if defined? @pictweet_temp_folder_name
@@ -586,7 +590,7 @@ module Ebooks
       @pictweet_temp_folder_name
     end
 
-    # Delete temporary pictweet files
+    # Delete everything in temporary pictweet folder that can be deleted
     def pictweet_temp_delete
       # Don't do anything if pictweet_temp doesn't exist
       return unless Dir.exists? pictweet_temp_folder
