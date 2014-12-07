@@ -22,8 +22,13 @@ class MyBot < Ebooks::Bot
     scheduler.every '24h' do
       # Tweet something every 24 hours
       # See https://github.com/jmettraux/rufus-scheduler
+
       # tweet("hi")
-      # pictweet("hi", "cuteselfie.jpg")
+
+      # pictweet("hey", ["cuteselfie.jpg"])
+      # pictweet("'sup", ["scarydoggie.jpg", "http://evilcorp.com/meanie.png"]) do |filename|
+      #   add_sunglasses(filename)
+      # end
     end
   end
 
