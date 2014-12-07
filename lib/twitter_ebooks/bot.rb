@@ -105,6 +105,38 @@ module Ebooks
       end
       @mentionless = mless
     end
+
+    # Get an array of media uris in tweet.
+    # @param size [String] A twitter image size to return. Supported sizes are thumb, small, medium (default), large
+    # @return [Array<String>] image URIs included in tweet
+    def media_uris(*args)
+      # When there's no size given, the default is medium.
+      size = ''
+      # Was one given?
+      unless args.empty?
+        case args[0]
+        when 'thumb'
+          size = ':thumb'
+        when 'small'
+          size = ':small'
+        when 'medium'
+          size = ':medium'
+        when 'large'
+          size = ':large'
+        end
+      end
+
+      # Start collecting uris.
+      uris = []
+      if @tweet.media?
+        @tweet.media.each do |each_media|
+          uris << each_media.media_url.to_s + size
+        end
+      end
+
+      # and that's pretty much it!
+      uris
+    end
   end
 
   class Bot
