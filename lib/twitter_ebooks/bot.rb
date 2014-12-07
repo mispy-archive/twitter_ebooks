@@ -415,11 +415,9 @@ module Ebooks
     # @param opt_update [Hash] optional. options passed to update
     # @param opt_upload [Hash] optional. options passed to upload
     # @block If you attach a block, you'll be given relative filenames before they get uploaded, so you can process them first!
-    def pictweet(txt, pic, *args)
-      # Set opt_update to first *args argument or an empty hash
-      opt_update = args[0].is_a?(Hash) ? args[0] : {}
-      # Set opt_upload to second *args argument or an empty hash
-      opt_upload = args[1].is_a?(Hash) ? args[1] : {}
+    def pictweet(txt, pic, opt_update = {}, opt_upload = {})
+      opt_update = {} unless opt_update.is_a? Hash
+      opt_upload = {} unless opt_upload.is_a? Hash
 
       # If pic isn't an array, make it one.
       pic = [pic] unless pic.is_a? Array
@@ -558,11 +556,9 @@ module Ebooks
     # Create the next file name inside temp folder
     # @param extension [String] file extension. don't forget to include the dot before its letters
     # @return [String] filename
-    def pictweet_next_file_name(*args)
+    def pictweet_next_file_name(extension = '')
       # Create temporary image directory if it doesn't already exist.
       Dir.mkdir(pictweet_temp_folder) unless Dir.exists? pictweet_temp_folder
-
-      extension = args.length > 0 ? args[0].to_s : ''
 
       @pictweet_download_number = @pictweet_download_number.to_i.next
       "#{pictweet_temp_folder}/#{@pictweet_download_number}#{extension}"
