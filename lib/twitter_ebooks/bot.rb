@@ -721,6 +721,9 @@ module Ebooks
         # If pic_list isn't an array, make it one.
         pic_list = [pic_list] unless pic_list.is_a? Array
 
+        # If pic_list is an empty array or an array containing an empty string, just return an empty hash. People know what they're doing, right?
+        return {} if pic_list == [] or pic_list == ['']
+
         # Create an array to store media IDs from Twitter
         successful_images = []
         uploaded_media_ids = []
