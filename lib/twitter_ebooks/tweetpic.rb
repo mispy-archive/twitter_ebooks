@@ -14,6 +14,7 @@ module Ebooks
     # @param tweet_options [Hash] options hash that will be passed along with your tweet
     # @param upload_options [Hash] options hash passed while uploading images
     # @yield [file_name] provides full filenames of files after they have been fetched, but before they're uploaded to twitter
+    # @raise [Ebooks::TweetPic::NoUploadedFilesError] if no files could be uploaded
     def pic_tweet(tweet_text, pic_list, tweet_options = {}, upload_options = {}, &block)
       tweet_options ||= {}
       upload_options ||= {}
@@ -31,6 +32,7 @@ module Ebooks
     # @param (see #pic_tweet)
     # @yield (see #pic_tweet)
     # @todo test if this works with DMs
+    # @raise (see #pic_tweet)
     def pic_reply(reply_tweet, tweet_text, pic_list, tweet_options = {}, upload_options = {}, &block)
       tweet_options ||= {}
       upload_options ||= {}
@@ -39,6 +41,22 @@ module Ebooks
       reply(reply_tweet, tweet_text, tweet_options)
     end
     alias_method :picreply, :pic_reply
+
+    # Reply to a tweet with a message containing an image. MAY work with dms.
+    # Only four images are allowed per tweet, but you can pass as many as you want
+    # The first four to be uploaded sucessfully will be included in your tweet
+    # Provide a block if you would like to modify your files before they're uploaded.
+    # Where {#pic_reply} would raise NoUploadedFilesError, does nothing instead.
+    # @param (see #pic_reply)
+    # @yield (see #pic_reply) 
+    def if_has_pic_reply(reply_tweet, tweet_text, pic_list, tweet_options = {}, upload_options = {}, &block)
+      begin
+        pic_reply(reply_tweet, tweet_text, pic_list, tweet_options = {}, upload_options = {}, &block)
+      rescue Ebooks::TweetPic::NoUploadedFilesError
+        # Do nothing, as promised.
+        return
+      end
+    end
   end
 
   # A singleton that uploads pictures to twitter for tweets and stuff
