@@ -317,8 +317,8 @@ module Ebooks
       #   Check if a list's length is equal to, less than, or greater than limit
       #   @param check_list [#length] object to check length of
       #   @return [Integer] difference between length and the limit, with negative values meaning length is below limit.
-      # @todo See if this is is available via API, or edit this if it ever changes
       def limit(*args)
+        # Twitter's API page just says, "You may associated[sic] up to 4 media to a Tweet," with no information on how to dynamically get this value.
         tweet_picture_limit = 4
 
         case args.length
