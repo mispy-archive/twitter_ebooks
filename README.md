@@ -59,7 +59,7 @@ class MyBot < Ebooks::Bot
     end
   end
 
-  def on_message(dm)
+  def on_direct_message(dm)
     # Reply to a DM
     # reply(dm, "secret secrets")
   end
