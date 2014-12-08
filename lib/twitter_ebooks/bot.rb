@@ -379,7 +379,7 @@ module Ebooks
         end
 
         log "Replying to @#{ev.user.screen_name} with: #{meta.reply_prefix + text}"
-        tweet = twitter.update(meta.reply_prefix + text, in_reply_to_status_id: ev.id)
+        tweet = twitter.update(meta.reply_prefix + text, opts.merge({in_reply_to_status_id: ev.id}))
         conversation(tweet).add(tweet)
         tweet
       else
