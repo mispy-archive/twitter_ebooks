@@ -61,9 +61,9 @@ module Ebooks
 
   # A singleton that uploads pictures to twitter for tweets and stuff
   module TweetPic
-    # Default directory name
-    DIRECTORY = 'tweet_pic_temp'
-    private_constant :DIRECTORY
+    # Default file prefix
+    DEFAULT_PREFIX = 'tweet-pic'
+    private_constant :DEFAULT_PREFIX
 
     # Supported filetypes and their extensions
     SUPPORTED_FILETYPES = {
@@ -81,44 +81,20 @@ module Ebooks
     FiletypeError = Class.new TypeError
     EmptyFileError = Class.new IOError
     NoUploadedFilesError = Class.new RuntimeError
+    NoSuchFileError = Class.new NameError
 
     # Singleton
     class << self
-      # Find directory name
-      # @param directory_name [String] Set name of directory. Only does anything if a directory hasn't been made yet.
-      # @return [String] name of directory
-      def directory(directory_name = DIRECTORY)
-        directory_name ||= DIRECTORY
 
-        # Generate a directory name if it doesn't exist.
-        unless defined? @directory_variable
-          # Start out just trying to make a directory with the base name
-          @directory_variable = directory_name
-          current_count = 0
-
-          # Keep looking for a folder that doesn't exist yet
-          while File.exists?(@directory_variable)
-            # If a folder exists, but it's empty, that's fine.
-            break if Dir.exists?(pictweet_temp_folder) && Dir.entries(pictweet_temp_folder).length < 3
-            # Otherwise, add 1 and keep looking.
-            @directory_variable = "#{directory_name}_#{current_count.to_s}"
-            current_count += 1
-          end
-        end
-
-        # Create directory if it doesn't currently exist (can happen a lot).
-        Dir.mkdir(@directory_variable) unless Dir.exists? @directory_variable
-
-        @directory_variable
-      end
-      private :directory
-
-      # Next file name
+      # Create a new file inside virtual directory
       # @param file_extension [String] file extension to append to filename
-      # @return [String] new filename
+      # @return [String] new virtual filename
       # @raise [Ebooks::TweetPic::FiletypeError] if extension isn't one supported by Twitter
       def file(file_extension = '')
         file_extension ||= ''
+
+        # Create file hash if it doesn't exist yet.
+        @file_hash ||= {}
 
         # Add a dot if it doesn't already
         file_extension.prepend('.') unless file_extension.start_with? '.'
@@ -131,8 +107,50 @@ module Ebooks
 
         # Increment file name
         @file_variable = @file_variable.to_i.next
-        "#{@file_variable}#{file_extension}"
+        
+        # Do we have a prefix yet? Yes, this like is super long.
+        @file_prefix ||= "#{DEFAULT_PREFIX}-#{Time.now.to_f.to_s.gsub(/\./,'-')}"
+
+        # Create a new real file(name) and close it right away.
+        real_file = Tempfile.create(["#{@file_prefix}-#{@file_variable}-", file_extension])
+
+        # Store virtual filename and realfile into file_hash
+        virtaul_filename = "#{@file_variable}#{file_extension}"
+        @file_hash["#{@file_variable}#{file_extension}"] = real_file
+
+        virtaul_filename
       end
+
+      # List all files inside virtual directory
+      # @note not to be confused with {::file}
+      # @return [Array<String>] array of filenames inside virtual directory
+      def files
+        # Return an empty array if file hash hasn't even been made yet
+        return [] unless defined? @file_hash
+
+        # Otherwise, return everything inside directory, minus dot elements.
+        @file_hash.keys
+      end
+
+      # Fetch a file object
+      # @param virtual_filename [String] object to look for
+      # @return [Tempfile] file object
+      # @raise [Ebooks::TweetPic::NoSuchFileError] if file doesn't actually exist
+      def fetch(virtual_filename)
+        raise NoSuchFileError, "#{virtual_filename} doesn't exist" unless @file_hash.has_key? virtual_filename
+
+        @file_hash[virtual_filename]
+      end
+      private :fetch
+
+      # Get a real path for a virtual filename
+      # @param (see ::fetch)
+      # @return [String] path of file
+      # @raise (see ::fetch)
+      def path(virtual_filename)
+        fetch(virtual_filename).path
+      end
+      private :path
 
       # Creates a scheduler
       # @return [Rufus::Scheduler]
@@ -141,22 +159,14 @@ module Ebooks
       end
       private :scheduler
 
-      # Find files inside directory
-      # @note not to be confused with {::file}
-      # @return [Array<String>] array of filenames inside directory
-      def files
-        # Return an empty array if directory hasn't even been made yet
-        return [] unless defined? @directory_variable
-
-        # Otherwise, return everything inside directory, minus dot elements.
-        Dir.entries(directory) - ['.', '..']
-      end
-
-      # Queues a file for deletion, deletes all queued files if possible, and then deletes folder if it's empty.
-      # @param trash_files [Array<String>] files to queue for deletion
+      # Queues a file for deletion and deletes all queued files if possible
+      # @param trash_files [String, Array<String>] files to queue for deletion
       # @return [Array<String>] files still in deletion queue
       def delete(trash_files = [])
         trash_files ||= []
+
+        # Turn trash_files into an array if it isn't one.
+        trash_files = [trash_files] unless trash_files.is_a? Array
 
         # Create queue if necesscary
         @delete_queue ||= []
@@ -169,11 +179,13 @@ module Ebooks
         @delete_queue.delete_if do |current_file|
           begin
             # Attempt to delete file
-            File.delete "#{directory}/#{current_file}"
+            File.delete path(current_file)
           rescue
             # Deleting file failed. Just move on.
             next false
           end
+
+          true
         end
 
         unless @delete_queue.empty?
@@ -182,9 +194,6 @@ module Ebooks
             delete
           end
         end
-
-        # Remove directory if it's empty now.
-        Dir.rmdir(directory) if files.empty?
 
         @delete_queue
       end
@@ -200,7 +209,6 @@ module Ebooks
         uri_object = URI(uri_string)
         # Create a local variable for file name
         destination_filename = ''
-        full_destination_filename = ''
         # Open download thingie
         Net::HTTP.start(uri_object.host, uri_object.port) do |http_object|
           http_object.request Net::HTTP::Get.new(uri_object) do |response_object|
@@ -210,21 +218,20 @@ module Ebooks
             content_type = response_object['content-type']
             if SUPPORTED_FILETYPES.has_key? content_type
               destination_filename = file SUPPORTED_FILETYPES[content_type]
-              full_destination_filename = "#{directory}/#{destination_filename}"
             else
               raise FiletypeError, "'#{uri_string}' is an unsupported content-type: '#{content_type}'"
             end
 
             # Now write to file!
-            open(full_destination_filename, 'w') do |file|
-              response_object.read_body do |chunk|
-                file.write chunk
+            File.open(path(destination_filename), 'w') do |current_file|
+              response_object.read_body do |current_chunk|
+                current_file.write current_chunk
               end
             end
           end
         end
         # If filesize is empty, something went wrong.
-        downloaded_filesize = File.size(full_destination_filename)
+        downloaded_filesize = File.size path(destination_filename)
         raise EmptyFileError, "'#{uri_string}' produced an empty file" if downloaded_filesize == 0
 
         # If we survived this long, everything is all set!
@@ -245,7 +252,7 @@ module Ebooks
         destination_filename = file file_extension
 
         # Do copying
-        FileUtils.copy(source_filename, "#{directory}/#{destination_filename}")
+        FileUtils.copy(source_filename, path(destination_filename))
 
         destination_filename
       end
@@ -264,18 +271,25 @@ module Ebooks
       end
 
       # Allows editing of files through a block.
-      # @param file_list [Array<String>] names of files to edit
+      # @param file_list [String, Array<String>] names of files to edit
       # @yield [file_name] provides full filenames of files for block to manipulate
+      # @raise [Ebooks::TweetPic::NoSuchFileError] if files don't exist
       def edit(file_list, &block)
         # This method doesn't do anything without a block
         return unless block_given?
 
+        # Turn file_list into an array if it's not an array
+        file_list = [file_list] unless file_list.is_a? Array
+
         # First, make sure file_list actually contains actual files.
         file_list &= files
 
+        # Raise if we have no files to work with
+        raise NoSuchFileError, 'Files don\'t exist' if file_list.empty?
+
         # Iterate over files, giving their full filenames over to the block
         file_list.each do |file_list_each|
-          yield "#{directory}/#{file_list_each}"
+          yield path(file_list_each)
         end
       end
 
@@ -287,7 +301,7 @@ module Ebooks
         upload_options ||= {}
 
         # Open file stream
-        file_object = File.new "#{directory}/#{file_name}"
+        file_object = File.open path(file_name)
         # Upload it
         media_id = twitter_object.upload(file_object, upload_options)
         # Close file stream
