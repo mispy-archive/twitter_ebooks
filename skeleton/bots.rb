@@ -22,15 +22,8 @@ class MyBot < Ebooks::Bot
     scheduler.every '24h' do
       # Tweet something every 24 hours
       # See https://github.com/jmettraux/rufus-scheduler
-
       # tweet("hi")
-
-      # pic_tweet("hey", ["cuteselfie.jpg"])
-      # pic_tweet("'sup", ["scarydoggie.jpg", "http://evilcorp.com/meanie.png"]) do |filename|
-      #   file = File.new(filename)
-      #   add_sunglasses(file)
-      #   file.close
-      # end
+      # pic_tweet("hey", ["cuteselfie.jpg", "http://supercute.com/kitties.png"])
     end
   end
 
@@ -47,6 +40,15 @@ class MyBot < Ebooks::Bot
   def on_mention(tweet)
     # Reply to a mention
     # reply(tweet, meta(tweet).reply_prefix + "oh hullo")
+    #
+    # Edit a picture tweeted at you
+    # if tweet.media?
+    #   pic_reply("'sup", meta(tweet).media_uris) do |filename|
+    #     picture = File.new(filename)
+    #     add_sunglasses(picture)
+    #     picture.close
+    #   end
+    # end
   end
 
   def on_timeline(tweet)
