@@ -35,6 +35,13 @@ class MyBot < Ebooks::Bot
   def on_follow(user)
     # Follow a user back
     # follow(user.screen_name)
+    #
+    # Generate a picture for whoever just followed you (provide only a file extension)
+    # pic_tweet("@#{user.screen_name} Made you this.", ['.jpg']) do |filename|
+    #   picture = File.new(filename)
+    #   YourOwnLibrary::generate_picture(picture)
+    #   picture.close
+    # end
   end
 
   def on_mention(tweet)
@@ -44,7 +51,7 @@ class MyBot < Ebooks::Bot
     # Edit a picture tweeted at you
     # if_has_pic_reply("'sup", meta(tweet).media_uris) do |filename|
     #   picture = File.new(filename)
-    #   add_sunglasses(picture)
+    #   YourOwnLibrary::add_sunglasses(picture)
     #   picture.close
     # end
   end

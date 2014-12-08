@@ -11,6 +11,7 @@ module Ebooks
     # Provide a block if you would like to modify your files before they're uploaded
     # @param tweet_text [String] text content for tweet
     # @param pic_list [String, Array<String>] a string or array of strings containing pictures to tweet
+    #   provide only a file extension to create an empty file of that type. this won't work unless you also provide a block to generate imgaes.
     # @param tweet_options [Hash] options hash that will be passed along with your tweet
     # @param upload_options [Hash] options hash passed while uploading images
     # @yield [file_name] provides full filenames of files after they have been fetched, but before they're uploaded to twitter
@@ -110,7 +111,7 @@ module Ebooks
         # Do we have a prefix yet? Yes, this like is super long.
         @file_prefix ||= "#{DEFAULT_PREFIX}-#{Time.now.to_f.to_s.gsub(/\./,'-')}"
 
-        # Create a new real file(name) and close it right away.
+        # Create a new real file(name)
         real_file = Tempfile.create(["#{@file_prefix}-#{@file_variable}-", file_extension])
 
         # Store virtual filename and realfile into file_hash
@@ -239,9 +240,11 @@ module Ebooks
       private :download
 
       # Copies a file into directory
-      # @param source_filename [String] relative path of image to copy
+      # @param source_filename [String] relative path of image to copy or an extension for an empty file
       # @return [String] filename of copied file
       def copy(source_filename)
+        file_extension = ''
+        
         # Find file-extension
         if source_filename.match /(\.\w+)$/
           file_extension = $1
@@ -249,9 +252,9 @@ module Ebooks
 
         # Create destination filename
         destination_filename = file file_extension
-
-        # Do copying
-        FileUtils.copy(source_filename, path(destination_filename))
+        
+        # Do copying, but just leave empty if source_filename is just an extension
+        FileUtils.copy(source_filename, path(destination_filename)) unless source_filename == file_extension
 
         destination_filename
       end
@@ -296,9 +299,12 @@ module Ebooks
       # @param twitter_object [Twitter] a twitter object to upload file with
       # @param file_name [String] name of file to upload
       # @return [Integer] media id from twitter
+      # @raise [Ebooks::TweetPic::EmptyFileError] if file is empty
       def upload(twitter_object, file_name, upload_options = {})
         upload_options ||= {}
 
+        # Does file exist, and is it empty?
+        raise EmptyFileError, "'#{file_name}' is empty" if File.size(path(file_name)) == 0
         # Open file stream
         file_object = File.open path(file_name)
         # Upload it
