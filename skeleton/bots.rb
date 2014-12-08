@@ -25,8 +25,8 @@ class MyBot < Ebooks::Bot
 
       # tweet("hi")
 
-      # pictweet("hey", ["cuteselfie.jpg"])
-      # pictweet("'sup", ["scarydoggie.jpg", "http://evilcorp.com/meanie.png"]) do |filename|
+      # pic_tweet("hey", ["cuteselfie.jpg"])
+      # pic_tweet("'sup", ["scarydoggie.jpg", "http://evilcorp.com/meanie.png"]) do |filename|
       #   file = File.new(filename)
       #   add_sunglasses(file)
       #   file.close
