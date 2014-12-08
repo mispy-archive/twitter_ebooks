@@ -438,40 +438,5 @@ module Ebooks
     def scheduler
       @scheduler ||= Rufus::Scheduler.new
     end
-
-    # Tweet something containing an image
-    # Only four images are allowed per tweet, but you can pass as many as you want
-    # The first four to be uploaded sucessfully will be included in your tweet
-    # Provide a block if you would like to modify your files before they're uploaded.
-    # @param tweet_text [String] text content for tweet
-    # @param pic_list [String, Array<String>] a string or array of strings containing pictures to tweet
-    # @param tweet_options [Hash] options hash that will be passed along with your tweet
-    # @param upload_options [Hash] options hash passed while uploading images
-    # @yield [file_name] provides full filenames of files after they have been fetched, but before they're uploaded to twitter
-    def pic_tweet(tweet_text, pic_list, tweet_options = {}, upload_options = {}, &block)
-      tweet_options ||= {}
-      upload_options ||= {}
-      
-      tweet_options.merge! Ebooks::TweetPic.process(self, pic_list, upload_options, block)
-      tweet(tweet_text, tweet_options)
-    end
-    alias_method :pictweet, :pic_tweet
-
-    # Reply to a tweet with a message containing an image. MAY work with dms.
-    # Only four images are allowed per tweet, but you can pass as many as you want
-    # The first four to be uploaded sucessfully will be included in your tweet
-    # Provide a block if you would like to modify your files before they're uploaded.
-    # @param reply_tweet [Twitter::Tweet, Twitter::DirectMessage] tweet or direct message to reply to. direct messages are untested.
-    # @param (see #pic_tweet)
-    # @yield (see #pic_tweet)
-    # @todo test if this works with DMs
-    def pic_reply(reply_tweet, tweet_text, pic_list, tweet_options = {}, upload_options = {}, &block)
-      tweet_options ||= {}
-      upload_options ||= {}
-      
-      tweet_options.merge! Ebooks::TweetPic.process(self, pic_list, upload_options, block)
-      reply(reply_tweet, tweet_text, tweet_options)
-    end
-    alias_method :picreply, :pic_reply
   end
 end
