@@ -48,6 +48,15 @@ module Ebooks
       end
 
       @client = client || make_client
+      if @client.is_a? Hash
+        @config = @client
+        @client = Twitter::REST::Client.new do |config|
+          config.consumer_key = @config[:consumer_key]
+          config.consumer_secret = @config[:consumer_secret]
+          config.access_token = @config[:oauth_token]
+          config.access_token_secret = @config[:oauth_token_secret]
+        end
+      end
 
       if File.exists?(@path)
         @tweets = JSON.parse(File.read(@path), symbolize_names: true)

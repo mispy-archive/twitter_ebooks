@@ -149,7 +149,15 @@ STR
       exit 1
     end
 
-    Ebooks::Archive.new(username, outpath).sync
+    consumer_key, consumer_secret, access_token, access_token_secret = find_auth true
+    config = {
+      consumer_key: consumer_key,
+      consumer_secret: consumer_secret,
+      access_token: access_token,
+      access_token_secret: access_token_secret
+    }
+
+    Ebooks::Archive.new(username, outpath, config).sync
   end
 
   HELP.tweet = <<-STR
@@ -183,7 +191,8 @@ STR
   STR
 
   def self.auth
-    consumer_key, consumer_secret = find_consumer
+    consumer_key, consumer_secret = find_auth
+    exit 1 unless defined?(consumer_key) && defined?(consumer_secret)
     require 'oauth'
 
     consumer = OAuth::Consumer.new(
@@ -272,34 +281,79 @@ STR
 
   # Non-command methods
 
-  def self.find_consumer
+  def self.find_auth(require_tokens = false)
     if ENV['CONSUMER_KEY'] && ENV['CONSUMER_SECRET']
-      log "Using consumer details from environment variables:\n" +
-          "  consumer key: #{ENV['CONSUMER_KEY']}\n" +
-          "  consumer secret: #{ENV['CONSUMER_SECRET']}"
-      return [ENV['CONSUMER_KEY'], ENV['CONSUMER_SECRET']]
-    end
-
-    load_bots
-    consumer_key = nil
-    consumer_secret = nil
-    Ebooks::Bot.all.each do |bot|
-      if bot.consumer_key && bot.consumer_secret
-        consumer_key = bot.consumer_key
-        consumer_secret = bot.consumer_secret
-        log "Using consumer details from @#{bot.username}:\n" +
-            "  consumer key: #{bot.consumer_key}\n" +
-            "  consumer secret: #{bot.consumer_secret}\n"
-        return consumer_key, consumer_secret
+      if !require_tokens
+        log "Using consumer details from environment variables:\n" +
+            "  CONSUMER_KEY: #{ENV['CONSUMER_KEY']}\n" +
+            "  CONSUMER_SECRET: #{ENV['CONSUMER_SECRET']}"
+        return ENV['CONSUMER_KEY'], ENV['CONSUMER_SECRET']
+      elsif ENV['ACCESS_TOKEN'] && ENV['ACCESS_TOKEN_SECRET']
+        log "Using auth details from environment variables:\n" +
+            "  CONSUMER_KEY: #{ENV['CONSUMER_KEY']}\n" +
+            "  CONSUMER_SECRET: #{ENV['CONSUMER_SECRET']}\n" +
+            "  ACCESS_TOKEN: #{ENV['ACCESS_TOKEN']}\n" +
+            "  ACCESS_TOKEN_SECRET: #{ENV['ACCESS_TOKEN_SECRET']}"
+        return ENV['CONSUMER_KEY'], ENV['CONSUMER_SECRET'], ENV['ACCESS_TOKEN'], ENV['ACCESS_TOKEN_SECRET']
       end
     end
 
-    if consumer_key.nil? || consumer_secret.nil?
+    load_bots
+    Ebooks::Bot.all.each do |bot|
+      if bot.consumer_key && bot.consumer_secret
+        if !require_tokens
+          log "Using consumer details from @#{bot.username}:\n" +
+              "  consumer key: #{bot.consumer_key}\n" +
+              "  consumer secret: #{bot.consumer_secret}"
+          return bot.consumer_key, bot.consumer_secret
+        elsif bot.access_token && bot.access_token_secret
+          log "Using auth details from @#{bot.username}:\n" +
+              "  consumer key: #{bot.consumer_key}\n" +
+              "  consumer secret: #{bot.consumer_secret}\n" +
+              "  access token: #{bot.access_token}\n" +
+              "  access token secret: #{bot.access_token_secret}"
+          return bot.consumer_key, bot.consumer_secret, bot.access_token, bot.access_token_secret
+        end
+      end 
+    end
+
+    if !require_tokens
       log "Couldn't find any consumer details to auth an account with.\n" +
           "Please either configure a bot with consumer_key and consumer_secret\n" +
           "or provide the CONSUMER_KEY and CONSUMER_SECRET environment variables."
-      exit 1
+    else
+      log "Couldn't find any auth details to auth an account with.\n" +
+          "Please either configure a bot with consumer_key, consumer_secret, access_token, and access_token_secret\n" +
+          "or provide the CONSUMER_KEY, CONSUMER_SECRET, ACCESS_TOKEN, ACCESS_TOKEN_SECRET environment variables."
     end
+
+    log "Alternatively, you may manually enter details to authenticate."
+    log "Consumer key: "
+    consumer_key = STDIN.gets.chomp
+    log "Consumer secret: "
+    consumer_secret = STDIN.gets.chomp
+    if require_tokens
+      log "Access token: "
+      access_token = STDIN.gets.chomp
+      log "Access secret: "
+      access_token_secret = STDIN.gets.chomp
+    end
+
+    log "Please type 'env' if you would like to save these into your environment variables."
+    log "I would like to save to my "
+    please_save = STDIN.gets.chomp.match /^env/i
+    
+    if please_save  
+      ENV['CONSUMER_KEY'] = consumer_key
+      ENV['CONSUMER_SECRET'] = consumer_secret
+      if require_tokens
+        ENV['ACCESS_TOKEN'] = access_token
+        ENV['ACCESS_TOKEN_SECRET'] = access_token_secret
+      end
+    end
+
+    return consumer_key, consumer_secret unless require_tokens
+    return consumer_key, consumer_secret, access_token, access_token_secret
   end
 
   def self.load_bots
