@@ -45,8 +45,8 @@ module Ebooks
     end
     alias_method :picreply, :pic_reply
 
-    # (see #pic_reply)
-    # Doesn't do anything if pic_list is empty, so you don't have to check with Twitter::Tweet.media?
+    # Does the same thing as {#pic_reply}, but doesn't do anything if pic_list is empty.
+    # Safe to place directly inside reply with no checks for media beforehand.
     # @param (see #pic_reply)
     # @yield (see #pic_reply)
     def if_has_pic_reply(reply_tweet, tweet_text, pic_list, tweet_options = {}, upload_options = {}, &block)
@@ -122,7 +122,7 @@ module Ebooks
       end
 
       # List all files inside virtual directory
-      # @note not to be confused with {::file}
+      # @note not to be confused with {#file}
       # @return [Array<String>] array of filenames inside virtual directory
       def files
         # Return an empty array if file hash hasn't even been made yet
@@ -344,7 +344,7 @@ module Ebooks
       # @param bot_object [Ebooks::Bot] an ebooks bot to upload files with
       # @param pic_list [String, Array<String>] an array of relative paths or uris to upload, or a string if there's only one
       # @param upload_options [Hash] options hash passed while uploading images
-      # @param [Proc] a proc meant to be passed to {::edit}
+      # @param [Proc] a proc meant to be passed to {#edit}
       # @return [Hash{Symbol=>String}] A hash containing a single :media_ids key/value pair for update options
       # @raise [Ebooks::TweetPic::NoUploadedFilesError] if no files in pic_list could be uploaded
       def process(bot_object, pic_list, upload_options, block)
