@@ -58,6 +58,7 @@ STR
     end
 
     FileUtils.cp_r(Ebooks::SKELETON_PATH, path)
+    FileUtils.mv(File.join(path, 'gitignore'), File.join(path, '.gitignore'))
 
     File.open(File.join(path, 'bots.rb'), 'w') do |f|
       template = File.read(File.join(Ebooks::SKELETON_PATH, 'bots.rb'))
