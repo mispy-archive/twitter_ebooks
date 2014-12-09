@@ -10,24 +10,46 @@ module Ebooks
   class Archive
     attr_reader :tweets
 
+    def load_auth_from_bot
+      # This was copied from /bin/ebooks.
+      load_bots
+      consumer_key = nil
+      consumer_secret = nil
+      Ebooks::Bot.all.each do |bot|
+        if bot.consumer_key && bot.consumer_secret && bot.access_token && bot.access_token_secret
+          log "Using login details from @#{bot.username}"
+          @config = {}
+          @config[:consumer_key] = bot.consumer_key
+          @config[:consumer_secret] = bot.consumer_secret
+          @config[:oauth_token] = bot.access_token
+          @config[:oauth_token_secret] = bot.access_token_secret
+          return true
+        end
+      end
+    end
+
     def make_client
-      if File.exists?(CONFIG_PATH)
-        @config = JSON.parse(File.read(CONFIG_PATH), symbolize_names: true)
-      else
-        @config = {}
+      unless load_auth_from_bot
+        puts "You can run this from any authenticated twitter_ebooks 3 repository to use a bot's auth details."
+        if File.exists?(CONFIG_PATH)
+          puts "Using login details from '#{CONFIG_PATH}' to fetch archive."
+          @config = JSON.parse(File.read(CONFIG_PATH), symbolize_names: true)
+        else
+          @config = {}
 
-        puts "As Twitter no longer allows anonymous API access, you'll need to enter the auth details of any account to use for archiving. These will be stored in #{CONFIG_PATH} if you need to change them later."
-        print "Consumer key: "
-        @config[:consumer_key] = STDIN.gets.chomp
-        print "Consumer secret: "
-        @config[:consumer_secret] = STDIN.gets.chomp
-        print "Access token: "
-        @config[:oauth_token] = STDIN.gets.chomp
-        print "Access secret: "
-        @config[:oauth_token_secret] = STDIN.gets.chomp
+          puts "Please enter the auth details of any account to use for archiving. These will be stored in '#{CONFIG_PATH}' if you need to change them later."
+          print "Consumer key: "
+          @config[:consumer_key] = STDIN.gets.chomp
+          print "Consumer secret: "
+          @config[:consumer_secret] = STDIN.gets.chomp
+          print "Access token: "
+          @config[:oauth_token] = STDIN.gets.chomp
+          print "Access secret: "
+          @config[:oauth_token_secret] = STDIN.gets.chomp
 
-        File.open(CONFIG_PATH, 'w') do |f|
-          f.write(JSON.pretty_generate(@config))
+          File.open(CONFIG_PATH, 'w') do |f|
+            f.write(JSON.pretty_generate(@config))
+          end
         end
       end
 
