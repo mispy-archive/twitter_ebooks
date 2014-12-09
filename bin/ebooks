@@ -19,6 +19,8 @@ Usage:
      ebooks help <command>
 
      ebooks new <reponame>
+     ebooks s[tart]
+     ebooks c[onsole]
      ebooks auth
      ebooks consume <corpus_path> [corpus_path2] [...]
      ebooks consume-all <corpus_path> [corpus_path2] [...]

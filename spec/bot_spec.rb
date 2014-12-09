@@ -9,7 +9,7 @@ class TestBot < Ebooks::Bot
   def configure
   end
 
-  def on_direct_message(dm)
+  def on_message(dm)
     reply dm, "echo: #{dm.text}"
   end
 

@@ -252,7 +252,7 @@ module Ebooks
       if ev.is_a? Twitter::DirectMessage
         return if ev.sender.screen_name.downcase == @username.downcase # Don't reply to self
         log "DM from @#{ev.sender.screen_name}: #{ev.text}"
-        fire(:direct_message, ev)
+        fire(:message, ev)
 
       elsif ev.respond_to?(:name) && ev.name == :follow
         return if ev.source.screen_name.downcase == @username.downcase
@@ -380,7 +380,7 @@ module Ebooks
         end
 
         log "Replying to @#{ev.user.screen_name} with: #{meta.reply_prefix + text}"
-        tweet = twitter.update(meta.reply_prefix + text, in_reply_to_status_id: ev.id)
+        tweet = twitter.update(meta.reply_prefix + text, opts.merge({in_reply_to_status_id: ev.id}))
         conversation(tweet).add(tweet)
         tweet
       else
