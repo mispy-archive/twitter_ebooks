@@ -154,6 +154,9 @@ module Ebooks
     # @return [Range, Integer] range of seconds to delay in delay method
     attr_accessor :delay_range
 
+    # @return [Hash] configuration loaded from config file. may be empty, if no file was loaded
+    attr_reader :config
+
     # @return [Array] list of all defined bots
     def self.all; @@all ||= []; end
 
