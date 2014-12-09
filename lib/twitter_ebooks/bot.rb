@@ -195,19 +195,57 @@ module Ebooks
     # @param file_name [String] a filename of a config file. doesn't have to be a file, because it could also be a username
     def read_config_file(file_name)
       begin
-        return unless file_name.match /\.\w+/
+        return unless file_name.match /\.\w+$/
         case $&.downcase
         when '.json'
           require 'json'
+          reader = File.method :read
           parser = JSON.method :parse
         when '.yaml'
           require 'yaml'
+          reader = File.method :read
           parser = YAML.method :load
+        when '.env'
+          # Please put these things into your ENV:
+          # EBOOKS_USERNAME_SUFFIX, EBOOKS_CONSUMER_KEY_SUFFIX, EBOOKS_CONSUMER_SECRET_SUFFIX
+          # EBOOKS_ACCESS_TOKEN_SUFFIX, EBOOKS_ACCESS_TOKEN_SECRET_SUFFIX
+          # Where suffix is the word you passed to #new in all caps. ('suffix.env' would be _SUFFIX's filename.)
+          def reader(virtual_filename)
+            # Until we add the 'dotenv' rubygem, this does NOT work with files!
+            # if File.file? virtual_filename
+              # require 'dotenv'
+              # Dotenv.load virtual_filename
+            # end
+
+            # First, chop off .env
+            prefix = 'EBOOKS_'
+            suffix = '_' + virtual_filename[0...-4].upcase
+            return_hash = {}
+            ENV.each do |key, value|
+              if key.start_with?(prefix) && key.end_with? suffix
+                return_hash[key] = value
+              end
+            end
+            prefix, return_hash, suffix
+          end
+          # Grab variables out of hash
+          def parser(prefix, parse_hash, suffix)
+            config_hash = {'twitter' => {}}
+            config_twitter = config_hash['twitter']
+
+            ['username', 'consumer key', 'consumer secret', 'access token', 'access token secret'].each do |name|
+              env_name = prefix + name.upcase + suffix
+              config_twitter[name] = parse_hash[env_name] if parse_hash.has_key? env_name
+            end
+
+            config_hash
+          end
         else
           return
         end
 
-        @config = parser.call File.read(file_name)
+        # This line is super fancy.
+        @config = parser.call reader.call(file_name)
 
         # Parse @config a bit.
         if @config.has_key? 'twitter'
