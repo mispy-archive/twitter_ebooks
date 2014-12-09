@@ -222,11 +222,11 @@ module Ebooks
             suffix = '_' + virtual_filename[0...-4].upcase
             return_hash = {}
             ENV.each do |key, value|
-              if key.start_with?(prefix) && key.end_with? suffix
+              if key.start_with?(prefix) && key.end_with?(suffix)
                 return_hash[key] = value
               end
             end
-            prefix, return_hash, suffix
+            return prefix, return_hash, suffix
           end
           # Grab variables out of hash
           def parser(prefix, parse_hash, suffix)
