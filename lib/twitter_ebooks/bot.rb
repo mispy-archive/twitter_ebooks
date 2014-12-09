@@ -182,8 +182,54 @@ module Ebooks
       @username = username
       configure
 
+      read_config_file(username)
+
       b.call(self) unless b.nil?
       Bot.all << self
+    end
+
+    # Reads a configuration file for this bot. Completely okay with this not being a configuration file, because then it just does nothing.
+    # @param file_name [String] a filename of a config file. doesn't have to be a file, because it could also be a username
+    def read_config_file(file_name)
+      begin
+        return unless file_name.match /\.\w+/
+        case $&.downcase
+        when '.json'
+          require 'json'
+          parser = JSON.method :parse
+        when '.yaml'
+          require 'yaml'
+          parser = YAML.method :load
+        else
+          return
+        end
+
+        @config = parser.call File.read(file_name)
+
+        # Parse @config a bit.
+        if @config.has_key? 'twitter'
+          t_config = @config['twitter']
+
+          # Grab username from config
+          if t_config.has_key? 'username'
+            username = t_config['username']
+            username = username[1..-1] if username.start_with? '@'
+            @username = username
+          end
+
+          # Grab consumer key and secret from config
+          @consumer_key = t_config['consumer key'] if t_config.has_key? 'consumer key'
+          @consumer_secret = t_config['consumer secret'] if t_config.has_key? 'consumer secret'
+
+          # Grab access token and secret from config
+          @access_token = t_config['access token'] if t_config.has_key? 'access token'
+          @access_token_secret = t_config['access token secret'] if t_config.has_key? 'access token secret'
+        end
+      rescue
+        # We don't really care if this fails, because if it did, there probably wasn't a file to read in the first place.
+
+        @config = {}
+      end
     end
 
     # Find or create the conversation context for this tweet
