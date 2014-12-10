@@ -4,6 +4,8 @@
 require 'spec_helper'
 require 'tempfile'
 
+puts 'Welcome home-ow myaster~! Kittehbot Puddispec at your service~ ♥'
+
 module PuddiSpec
   module EbooksBot
     module ReadConfigFile
@@ -198,6 +200,13 @@ describe Ebooks::Bot do
         twitter_hash['twitter'].delete('access token secret')
         ask me_to_try 'yaml', twitter_hash
         expect_twitter_authed_with twitter_hash
+      end
+    end
+
+    it 'doesn\'t throw an exception when given a file that doesn\'t actually exist' do
+      safely do
+        ask 'are you okay with non existent files.yaml'
+        expect_me.to eq ({})
       end
     end
   end
