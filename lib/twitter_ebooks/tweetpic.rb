@@ -84,29 +84,54 @@ module Ebooks
     # Singleton
     class << self
 
+      # List all files inside virtual directory
+      # @note not to be confused with {#file}
+      # @return [Array<String>] array of filenames inside virtual directory
+      def files
+        # Return an empty array if file hash hasn't even been made yet
+        return [] unless defined? @file_hash
+
+        # Otherwise, return everything inside directory, minus dot elements.
+        @file_hash.keys
+      end
+
       # Create a new file inside virtual directory
       # @param file_extension [String] file extension to append to filename
       # @return [String] new virtual filename
       # @raise [Ebooks::TweetPic::FiletypeError] if extension isn't one supported by Twitter
-      def file(file_extension = '')
-        file_extension ||= ''
+      def file(file_extension)
+        # Try to find an appropriate filetype.
+        catch :extension_found do
+          # Make file_extension lowercase if it isn't already
+          file_extension.downcase
+          # Does it already match?
+          if SUPPORTED_FILETYPES.has_key? file_extension
+            # It does, so standardize our file extension
+            file_extension = SUPPORTED_FILETYPES[file_extension]
+            throw :extension_found
+          end
+          # It doesn't. Is it missing a .?
+          unless file_extension.start_with? '.'
+            # Add it in
+            file_extension.prepend('.')
+            # Try again
+            if SUPPORTED_FILETYPES.has_key? file_extension
+              # Found it now!
+              file_extension = SUPPORTED_FILETYPES[file_extension]
+              throw :extension_found
+            end
+          end
+          # File-extension isn't supported.
+          raise FiletypeError, "'#{file_extension}' isn't a supported filetype"
+        end
 
         # Create file hash if it doesn't exist yet.
         @file_hash ||= {}
 
-        # Add a dot if it doesn't already
-        file_extension.prepend('.') unless file_extension.start_with? '.'
-
-        # Make file_extension lowercase if it isn't already
-        file_extension.downcase!
-
-        # Raise an error if the file-extension isn't supported.
-        raise FiletypeError, "'#{file_extension}' isn't as supported filetype" unless SUPPORTED_FILETYPES.has_key? file_extension
-
         # Increment file name
         @file_variable = @file_variable.to_i.next
         
-        # Do we have a prefix yet? Yes, this like is super long.
+        # Do we have a prefix yet?
         @file_prefix ||= "#{DEFAULT_PREFIX}-#{Time.now.to_f.to_s.gsub(/\./,'-')}"
 
         # Create a new real file(name)
@@ -119,17 +144,6 @@ module Ebooks
         virtaul_filename
       end
 
-      # List all files inside virtual directory
-      # @note not to be confused with {#file}
-      # @return [Array<String>] array of filenames inside virtual directory
-      def files
-        # Return an empty array if file hash hasn't even been made yet
-        return [] unless defined? @file_hash
-
-        # Otherwise, return everything inside directory, minus dot elements.
-        @file_hash.keys
-      end
-
       # Fetch a file object
       # @param virtual_filename [String] object to look for
       # @return [Tempfile] file object
@@ -139,7 +153,6 @@ module Ebooks
 
         @file_hash[virtual_filename]
       end
-      private :fetch
 
       # Get a real path for a virtual filename
       # @param (see ::fetch)
@@ -148,14 +161,12 @@ module Ebooks
       def path(virtual_filename)
         fetch(virtual_filename).path
       end
-      private :path
 
       # Creates a scheduler
       # @return [Rufus::Scheduler]
       def scheduler
         @scheduler_variable ||= Rufus::Scheduler.new
       end
-      private :scheduler
 
       # Queues a file for deletion and deletes all queued files if possible
       # @param trash_files [String, Array<String>] files to queue for deletion
@@ -235,7 +246,6 @@ module Ebooks
         # If we survived this long, everything is all set!
         destination_filename
       end
-      private :download
 
       # Copies a file into directory
       # @param source_filename [String] relative path of image to copy or an extension for an empty file
@@ -256,7 +266,6 @@ module Ebooks
 
         destination_filename
       end
-      private :copy
 
       # Puts a file into directory, downloading or copying as necesscary
       # @param source_file [String] relative path or internet address of image
