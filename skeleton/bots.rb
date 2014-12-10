@@ -49,7 +49,7 @@ class MyBot < Ebooks::Bot
     # reply(tweet, meta(tweet).reply_prefix + "oh hullo")
     #
     # Edit a picture tweeted at you
-    # if_has_pic_reply("'sup", meta(tweet).media_uris) do |filename|
+    # pic_reply?("'sup", meta(tweet).media_uris) do |filename|
     #   picture = File.new(filename)
     #   YourOwnLibrary::add_sunglasses(picture)
     #   picture.close

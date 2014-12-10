@@ -49,7 +49,7 @@ module Ebooks
     # Safe to place directly inside reply with no checks for media beforehand.
     # @param (see #pic_reply)
     # @yield (see #pic_reply)
-    def if_has_pic_reply(reply_tweet, tweet_text, pic_list, tweet_options = {}, upload_options = {}, &block)
+    def pic_reply?(reply_tweet, tweet_text, pic_list, tweet_options = {}, upload_options = {}, &block)
       pic_reply(reply_tweet, tweet_text, pic_list, tweet_options = {}, upload_options = {}, &block)
     rescue Ebooks::TweetPic::NoUploadedFilesError
       # Do nothing, as promised.
