@@ -50,12 +50,9 @@ module Ebooks
     # @param (see #pic_reply)
     # @yield (see #pic_reply)
     def if_has_pic_reply(reply_tweet, tweet_text, pic_list, tweet_options = {}, upload_options = {}, &block)
-      begin
-        pic_reply(reply_tweet, tweet_text, pic_list, tweet_options = {}, upload_options = {}, &block)
-      rescue Ebooks::TweetPic::NoUploadedFilesError
-        # Do nothing, as promised.
-        return
-      end
+      pic_reply(reply_tweet, tweet_text, pic_list, tweet_options = {}, upload_options = {}, &block)
+    rescue Ebooks::TweetPic::NoUploadedFilesError
+      # Do nothing, as promised.
     end
   end
 
@@ -77,11 +74,12 @@ module Ebooks
     }
 
     # Exceptions
-    HTTPResponseError = Class.new IOError
-    FiletypeError = Class.new TypeError
-    EmptyFileError = Class.new IOError
-    NoUploadedFilesError = Class.new RuntimeError
-    NoSuchFileError = Class.new NameError
+    Error = Class.new RuntimeError
+    HTTPResponseError = Class.new Error
+    FiletypeError = Class.new Error
+    EmptyFileError = Class.new Error
+    NoUploadedFilesError = Class.new Error
+    NoSuchFileError = Class.new Error
 
     # Singleton
     class << self
@@ -182,10 +180,10 @@ module Ebooks
             File.delete path(current_file)
           rescue
             # Deleting file failed. Just move on.
-            next false
+            false
+          else
+            true
           end
-
-          true
         end
 
         unless @delete_queue.empty?
@@ -379,7 +377,6 @@ module Ebooks
             delete([temporary_path])
           rescue
             # If something went wrong, just skip on. No need to log anything.
-            next
           end
         end
 
