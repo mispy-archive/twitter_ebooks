@@ -50,7 +50,7 @@ module Ebooks
       @client = client || make_client
 
       if File.exists?(@path)
-        @tweets = JSON.parse(File.read(@path), symbolize_names: true)
+        @tweets = JSON.parse(File.read(@path, :encoding => 'utf-8'), symbolize_names: true)
         log "Currently #{@tweets.length} tweets for #{@username}"
       else
         @tweets.nil?
