@@ -87,7 +87,7 @@ MyBot.new("abby_ebooks") do |bot|
 end
 ```
 
-'ebooks start' will run all defined bots in their own threads. The easiest way to run bots in a semi-permanent fashion is with [Heroku](https://www.heroku.com); just make an app, push the bot repository to it, enable a worker process in the web interface and it ought to chug along merrily forever.
+`ebooks start` will run all defined bots in their own threads. The easiest way to run bots in a semi-permanent fashion is with [Heroku](https://www.heroku.com); just make an app, push the bot repository to it, enable a worker process in the web interface and it ought to chug along merrily forever.
 
 The underlying streaming and REST clients from the [twitter gem](https://github.com/sferik/twitter) can be accessed at `bot.stream` and `bot.twitter` respectively.
 
