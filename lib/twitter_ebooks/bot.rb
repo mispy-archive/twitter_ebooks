@@ -188,9 +188,25 @@ module Ebooks
 
       @config = read_config_file(username)
       @config ||= {}
+      freeze_recursive(@config)
 
       b.call(self) unless b.nil?
       Bot.all << self
+    end
+
+    # Used to freeze @config and everything in it, so it can't be edited.
+    # @param object to freeze
+    def freeze_recursive(object)
+      # Does the object contain anything?
+      if object.respond_to? :each
+        # It might! So recurse through it.
+        object.each do |thing|
+          # Run this on it as well.
+          freeze_recursive(thing)
+        end
+      end
+      # Finally, freeze the object.
+      object.freeze
     end
 
     # Reads a configuration file for this bot. Completely okay with this not being a configuration file, because then it just does nothing.

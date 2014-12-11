@@ -4,8 +4,6 @@
 require 'spec_helper'
 require 'tempfile'
 
-puts 'Welcome home-ow myaster~! Kittehbot Puddispec at your service~ ♥'
-
 module PuddiSpec
   module EbooksBot
     module ReadConfigFile
@@ -200,6 +198,39 @@ describe Ebooks::Bot do
         twitter_hash['twitter'].delete('access token secret')
         ask me_to_try 'yaml', twitter_hash
         expect_twitter_authed_with twitter_hash
+      end
+    end
+
+    it 'can\'t be easily edited after creation' do
+      safely do
+        ask me_to_try 'yaml', {1=>{2=>{3=>{4=>{5=>{6=>{7=>{8=>{9=>10}}}}}}}}}
+        expect do
+          my[1] = 0
+        end.to raise_error
+        expect do
+          my[1][2] = 0
+        end.to raise_error
+        expect do
+          my[1][2][3] = 0
+        end.to raise_error
+        expect do
+          my[1][2][3][4] = 0
+        end.to raise_error
+        expect do
+          my[1][2][3][4][5] = 0
+        end.to raise_error
+        expect do
+          my[1][2][3][4][5][6] = 0
+        end.to raise_error
+        expect do
+          my[1][2][3][4][5][6][7] = 0
+        end.to raise_error
+        expect do
+          my[1][2][3][4][5][6][7][8] = 0
+        end.to raise_error
+        expect do
+          my[1][2][3][4][5][6][7][8][9] = 0
+        end.to raise_error
       end
     end
 
