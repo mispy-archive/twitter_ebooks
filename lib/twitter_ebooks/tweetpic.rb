@@ -142,6 +142,7 @@ module Ebooks
 
         # Create a new real file(name)
         real_file = Tempfile.create(["#{@file_prefix}-#{virtual_filename}-", file_extension])
+        real_file.close
 
         # Store virtual filename and realfile into file_hash
         full_virtual_filename = "#{virtual_filename}#{file_extension}"
@@ -232,7 +233,7 @@ module Ebooks
         @delete_queue.delete_if do |current_file|
           begin
             # Attempt to delete file
-            File.delete path(current_file)
+            File.delete @file_hash.delete(current_file)
           rescue
             # Deleting file failed. Just move on.
             false
