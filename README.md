@@ -17,7 +17,7 @@ A framework for building interactive twitterbots which respond to mentions/DMs. 
 - Non-participating users in a mention chain will be dropped after a few tweets
 - [API documentation](http://rdoc.info/github/mispy/twitter_ebooks) and tests
 
-Note that 3.0 is not backwards compatible with 2.x, so upgrade carefully!
+Note that 3.0 is not backwards compatible with 2.x, so upgrade carefully! In particular, **make sure to regenerate your models** since the storage format changed.
 
 ## Installation
 
