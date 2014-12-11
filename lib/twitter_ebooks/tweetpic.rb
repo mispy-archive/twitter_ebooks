@@ -62,6 +62,9 @@ module Ebooks
     DEFAULT_PREFIX = 'tweet-pic'
     private_constant :DEFAULT_PREFIX
 
+    # Characters for random string generation
+    RANDOM_CHARACTERS = [*'a'..'z', *'A'..'Z', *'1'..'9', '_']
+
     # Supported filetypes and their extensions
     SUPPORTED_FILETYPES = {
       '.jpg' => '.jpg',
@@ -91,7 +94,7 @@ module Ebooks
         # Return an empty array if file hash hasn't even been made yet
         return [] unless defined? @file_hash
 
-        # Otherwise, return everything inside directory, minus dot elements.
+        # Otherwise, return everything
         @file_hash.keys
       end
 
@@ -130,18 +133,59 @@ module Ebooks
 
         # Increment file name
         @file_variable = @file_variable.to_i.next
-        
+
+        # Make a filename, adding on a random part to make it harder to find
+        virtual_filename = "#{random_word(7..13)}-#{@file_variable}-#{random_word(13..16)}"
+
         # Do we have a prefix yet?
         @file_prefix ||= "#{DEFAULT_PREFIX}-#{Time.now.to_f.to_s.gsub(/\./,'-')}"
 
         # Create a new real file(name)
-        real_file = Tempfile.create(["#{@file_prefix}-#{@file_variable}-", file_extension])
+        real_file = Tempfile.create(["#{@file_prefix}-#{virtual_filename}-", file_extension])
 
         # Store virtual filename and realfile into file_hash
-        virtaul_filename = "#{@file_variable}#{file_extension}"
-        @file_hash["#{@file_variable}#{file_extension}"] = real_file
+        full_virtual_filename = "#{virtual_filename}#{file_extension}"
+        @file_hash[full_virtual_filename] = real_file
 
-        virtaul_filename
+        full_virtual_filename
+      end
+
+      # Create a random string of word characters (filename friendly)
+      # @param character_number_array [Integer, Range<Integer>, Array<Integer, Range<Integer>>] number of characters to generate.
+      #   types including multiple integers will pick a random one.
+      # @param extra_characters [Array<String>] extra characters 
+      # @return [String] random string with length asked for
+      def random_word(character_number_array, extra_characters = [])
+        extra_characters ||= []
+
+        # If it's not an array, make it one.
+        character_number_array = [character_number_array] unless character_number_array.is_a? Array
+        # Make a new array to hold expanded stuff
+        number_of_characters = []
+        # Iterate through array
+        character_number_array.each do |element|
+          if element.is_a? Range
+            # It's a range, so expand it and add it to number_of_characters
+            number_of_characters |= [*element]
+          else
+            # It's not a range, so just add it.
+            number_of_characters << element
+          end
+        end
+
+        # Get our actual number
+        number_of_characters = number_of_characters.uniq.sample
+        # Create array with random characters.
+        extra_characters = RANDOM_CHARACTERS | extra_characters
+        # Create a string to hold characters in
+        random_string = ''
+        # Repeat this number_of_characters times
+        number_of_characters.times do
+          # Add another character to string
+          random_string += extra_characters.sample
+        end
+
+        random_string
       end
 
       # Fetch a file object

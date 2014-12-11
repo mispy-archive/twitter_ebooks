@@ -4,8 +4,6 @@
 require 'spec_helper'
 require 'tempfile'
 
-puts 'Welcome home-ow myaster~! Kittehbot Puddispec at your service~ ♥'
-
 module PuddiSpec
   module EbooksBot
     module Pic_
@@ -41,6 +39,12 @@ module PuddiSpec
 
     def delete_files
       __.delete __.files
+    end
+
+    def random_times(rand = 16..21)
+      Random.rand(rand).times do
+        yield
+      end
     end
 
     def safely
@@ -94,17 +98,19 @@ describe Ebooks::TweetPic do
 
     it 'doesn\'t create files of unsupported filetypes' do
       safely do
-        extensions = __::SUPPORTED_FILETYPES
-        filetype = '.'
-        loop do
-          filetype = ".#{random_letters(3..5)}"
-          break unless extensions.include? filetype
+        random_times do
+          extensions = __::SUPPORTED_FILETYPES
+          filetype = '.'
+          loop do
+            filetype = ".#{random_letters(3..5)}"
+            break unless extensions.include? filetype
+          end
+          expect { __.file filetype }.to raise_error __::FiletypeError
         end
-        expect { __.file filetype }.to raise_error __::FiletypeError
       end
     end
 
-    it 'creates files and virtual filenames with the same filetype as the requested file' do
+    it 'creates files and virtual filenames with the same filetype as the requested filetype' do
       safely do
         __::SUPPORTED_FILETYPES.keys.uniq.each do |filetype|
           filename = __.file filetype
@@ -112,6 +118,32 @@ describe Ebooks::TweetPic do
           cleaned_filetype = __::SUPPORTED_FILETYPES[filetype]
           expect(find_extension(filename)).to eq cleaned_filetype
           expect(find_extension(filepath)).to eq cleaned_filetype
+        end
+      end
+    end
+
+    it 'creates a virtual filename of the correct format' do
+      safely do
+        random_times do
+          filename, filetype = make_a_file
+          this_regex = /^\w+-\d+-\w+(\.\w+)$/
+          expect(filename).to match this_regex
+          this_regex.match filename
+          expect(__::SUPPORTED_FILETYPES.values).to include($1)
+        end
+      end
+    end
+  end
+
+  describe '#random_word' do
+    it 'makes a random set of letters fitting requested criteria' do
+      safely do
+        random_times do
+          min_count = Random.rand(5..25)
+          max_count = min_count + Random.rand(10..20)
+          extra_characters = [*' '..'~']
+          criteria = /[#{Regexp.escape(extra_characters.join)}]{#{min_count},#{max_count}}/
+          expect(__.random_word(min_count..max_count, extra_characters)).to match criteria
         end
       end
     end
