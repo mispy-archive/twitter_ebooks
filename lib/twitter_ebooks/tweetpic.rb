@@ -224,16 +224,25 @@ module Ebooks
 
         # Create queue if necesscary
         @delete_queue ||= []
-        # Merge trash_files into queue
-        @delete_queue &= trash_files
-        # Compare queue to files that are actually in directory
-        @delete_queue |= files
+        # Iterate over trash files
+        trash_files.each do |trash_item|
+          # Retrieve trash_item's real path
+          file_object = @file_hash.delete trash_item
+          # Was trash_item in hash?
+          unless file_object.nil?
+            # It was. Add it to queue
+            @delete_queue << file_object.path
+          end
+        end
+
+        # Make sure there aren't duplicates
+        @delete_queue.uniq!
 
         # Iterate through delete_queue
         @delete_queue.delete_if do |current_file|
           begin
-            # Attempt to delete file
-            File.delete @file_hash.delete(current_file)
+            # Attempt to delete file if it exists
+            File.delete current_file if File.file? current_file
           rescue
             # Deleting file failed. Just move on.
             false

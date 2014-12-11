@@ -177,7 +177,7 @@ describe Ebooks::TweetPic do
   end
 
   describe '#delete' do
-    it 'can delete files successfully' do
+    it 'removes files from #files' do
       random_times do
         make_a_file
       end
@@ -192,6 +192,23 @@ describe Ebooks::TweetPic do
       delete_file = __.files.sample
       __.delete delete_file
       expect(__.files).not_to include delete_file
+    end
+
+    it 'actually deletes files from disk' do
+      name, ext = make_a_file
+      path = __.path name
+      __.delete name
+      expect(File.file? path).to be_falsy
+    end
+
+    it 'will queue up files it can\'t delete' do
+      name, ext = make_a_file
+      path = __.fetch name
+      File.open path do
+        expect(__.delete name).to include name
+      end
+      __.scheduler.jobs.each(&:call)
+      expect(__.delete name).not_to include name
     end
   end
 end
