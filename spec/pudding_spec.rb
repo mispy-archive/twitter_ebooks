@@ -108,10 +108,11 @@ module PuddiSpec
         expect(please.access_token_secret).to eq sub_hash['access token secret'] if sub_hash['access token secret']
       end
 
-      def safely
+      def run_before
         @PuddiSpec_environment_variables = ENV.invert
-        yield
-      ensure
+      end
+
+      def run_after
         @PuddiSpec_current_testing_file.close! if @PuddiSpec_current_testing_file
         @PuddiSpec_environment_variables.delete_if do |value, key|
           ENV[key] = value
@@ -126,119 +127,107 @@ describe Ebooks::Bot do
   describe '#read_config_file' do
     include PuddiSpec::EbooksBot::ReadConfigFile
 
+    before :each do
+      run_before
+    end
+
+    after :each do
+      run_before
+    end
+
     it 'runs when bots are created and can\'t be run again' do
-      safely do
-        hello
-        expect do
-          please.read_config_file ''
-        end.to raise_error
-      end
+      hello
+      expect do
+        please.read_config_file ''
+      end.to raise_error
     end
 
     it 'can parse yaml' do
-      safely do
-        this_hash = simple_hash
-        ask me_to_try 'yaml', this_hash
-        expect_me.to eq this_hash
-      end
+      this_hash = simple_hash
+      ask me_to_try 'yaml', this_hash
+      expect_me.to eq this_hash
     end
 
     it 'can parse json' do
-      safely do
-        this_hash = simple_hash
-        ask me_to_try 'json', this_hash
-        expect_me.to eq this_hash
-      end
+      this_hash = simple_hash
+      ask me_to_try 'json', this_hash
+      expect_me.to eq this_hash
     end
 
     it 'can read twitter details from yaml' do
-      safely do
-        twitter_hash = generate_twitter
-        ask me_to_try 'yaml', twitter_hash
-        expect_twitter_authed_with twitter_hash
-      end
+      twitter_hash = generate_twitter
+      ask me_to_try 'yaml', twitter_hash
+      expect_twitter_authed_with twitter_hash
     end
 
     it 'can read twitter details from json' do
-      safely do
-        twitter_hash = generate_twitter
-        ask me_to_try 'json', twitter_hash
-        expect_twitter_authed_with twitter_hash
-      end
+      twitter_hash = generate_twitter
+      ask me_to_try 'json', twitter_hash
+      expect_twitter_authed_with twitter_hash
     end
 
     it 'can read twitter details from env variables' do
-      safely do
-        env_suffix = random_upcase 1..15
-        if_this_works = env_suffix.downcase + '.env'
-        twitter_hash = generate_twitter
-        ENV["EBOOKS_USERNAME_#{env_suffix}"] = twitter_hash['twitter']['username']
-        ENV["EBOOKS_CONSUMER_KEY_#{env_suffix}"] = twitter_hash['twitter']['consumer key']
-        ENV["EBOOKS_CONSUMER_SECRET_#{env_suffix}"] = twitter_hash['twitter']['consumer secret']
-        ENV["EBOOKS_ACCESS_TOKEN_#{env_suffix}"] = twitter_hash['twitter']['access token']
-        ENV["EBOOKS_ACCESS_TOKEN_SECRET_#{env_suffix}"] = twitter_hash['twitter']['access token secret']
-        ask if_this_works
-        expect_twitter_authed_with twitter_hash
-      end
+      env_suffix = random_upcase 1..15
+      if_this_works = env_suffix.downcase + '.env'
+      twitter_hash = generate_twitter
+      ENV["EBOOKS_USERNAME_#{env_suffix}"] = twitter_hash['twitter']['username']
+      ENV["EBOOKS_CONSUMER_KEY_#{env_suffix}"] = twitter_hash['twitter']['consumer key']
+      ENV["EBOOKS_CONSUMER_SECRET_#{env_suffix}"] = twitter_hash['twitter']['consumer secret']
+      ENV["EBOOKS_ACCESS_TOKEN_#{env_suffix}"] = twitter_hash['twitter']['access token']
+      ENV["EBOOKS_ACCESS_TOKEN_SECRET_#{env_suffix}"] = twitter_hash['twitter']['access token secret']
+      ask if_this_works
+      expect_twitter_authed_with twitter_hash
     end
 
     it 'is fine with twitter usernames starting with @ and containing _' do
-      safely do
-        twitter_hash = generate_twitter true
-        ask me_to_try 'yaml', twitter_hash
-        expect_twitter_authed_with twitter_hash
-      end
+      twitter_hash = generate_twitter true
+      ask me_to_try 'yaml', twitter_hash
+      expect_twitter_authed_with twitter_hash
     end
 
     it 'doesn\'t mind loading just consumer key and secret' do
-      safely do
-        twitter_hash = generate_twitter
-        twitter_hash['twitter'].delete('username')
-        twitter_hash['twitter'].delete('access token')
-        twitter_hash['twitter'].delete('access token secret')
-        ask me_to_try 'yaml', twitter_hash
-        expect_twitter_authed_with twitter_hash
-      end
+      twitter_hash = generate_twitter
+      twitter_hash['twitter'].delete('username')
+      twitter_hash['twitter'].delete('access token')
+      twitter_hash['twitter'].delete('access token secret')
+      ask me_to_try 'yaml', twitter_hash
+      expect_twitter_authed_with twitter_hash
     end
 
     it 'can\'t be easily edited after creation' do
-      safely do
-        ask me_to_try 'yaml', {1=>{2=>{3=>{4=>{5=>{6=>{7=>{8=>{9=>10}}}}}}}}}
-        expect do
-          my[1] = 0
-        end.to raise_error
-        expect do
-          my[1][2] = 0
-        end.to raise_error
-        expect do
-          my[1][2][3] = 0
-        end.to raise_error
-        expect do
-          my[1][2][3][4] = 0
-        end.to raise_error
-        expect do
-          my[1][2][3][4][5] = 0
-        end.to raise_error
-        expect do
-          my[1][2][3][4][5][6] = 0
-        end.to raise_error
-        expect do
-          my[1][2][3][4][5][6][7] = 0
-        end.to raise_error
-        expect do
-          my[1][2][3][4][5][6][7][8] = 0
-        end.to raise_error
-        expect do
-          my[1][2][3][4][5][6][7][8][9] = 0
-        end.to raise_error
-      end
+      ask me_to_try 'yaml', {1=>{2=>{3=>{4=>{5=>{6=>{7=>{8=>{9=>10}}}}}}}}}
+      expect do
+        my[1] = 0
+      end.to raise_error
+      expect do
+        my[1][2] = 0
+      end.to raise_error
+      expect do
+        my[1][2][3] = 0
+      end.to raise_error
+      expect do
+        my[1][2][3][4] = 0
+      end.to raise_error
+      expect do
+        my[1][2][3][4][5] = 0
+      end.to raise_error
+      expect do
+        my[1][2][3][4][5][6] = 0
+      end.to raise_error
+      expect do
+        my[1][2][3][4][5][6][7] = 0
+      end.to raise_error
+      expect do
+        my[1][2][3][4][5][6][7][8] = 0
+      end.to raise_error
+      expect do
+        my[1][2][3][4][5][6][7][8][9] = 0
+      end.to raise_error
     end
 
     it 'doesn\'t throw an exception when given a file that doesn\'t actually exist' do
-      safely do
-        ask 'are you okay with non existent files.yaml'
-        expect_me.to eq ({})
-      end
+      ask 'are you okay with non existent files.yaml'
+      expect_me.to eq ({})
     end
   end
 end
