@@ -15,7 +15,7 @@ module Ebooks
     # @param tweet_options [Hash] options hash that will be passed along with your tweet
     # @param upload_options [Hash] options hash passed while uploading images
     # @yield [file_name] provides full filenames of files after they have been fetched, but before they're uploaded to twitter
-    # @raise [Ebooks::TweetPic::NoUploadedFilesError] if no files could be uploaded
+    # @raise [StandardError] first exception, if no files could be uploaded
     def pic_tweet(tweet_text, pic_list, tweet_options = {}, upload_options = {}, &block)
       tweet_options ||= {}
       upload_options ||= {}
@@ -50,9 +50,9 @@ module Ebooks
     # @param (see #pic_reply)
     # @yield (see #pic_reply)
     def pic_reply?(reply_tweet, tweet_text, pic_list, tweet_options = {}, upload_options = {}, &block)
-      pic_reply(reply_tweet, tweet_text, pic_list, tweet_options = {}, upload_options = {}, &block)
-    rescue Ebooks::TweetPic::NoUploadedFilesError
-      # Do nothing, as promised.
+      unless pic_list.empty?
+        pic_reply(reply_tweet, tweet_text, pic_list, tweet_options = {}, upload_options = {}, &block)
+      end
     end
   end
 
@@ -81,7 +81,6 @@ module Ebooks
     HTTPResponseError = Class.new Error
     FiletypeError = Class.new Error
     EmptyFileError = Class.new Error
-    NoUploadedFilesError = Class.new Error
     NoSuchFileError = Class.new Error
 
     # Singleton
@@ -132,10 +131,10 @@ module Ebooks
         @file_hash ||= {}
 
         # Increment file name
-        @file_variable = @file_variable.to_i.next
+        virtual_filename = @file_variable = @file_variable.to_i.next
 
         # Make a filename, adding on a random part to make it harder to find
-        virtual_filename = "#{random_word(7..13)}-#{@file_variable}-#{random_word(13..16)}"
+        virtual_filename = "#{random_word(7..13)}-#{virtual_filename}-#{random_word(13..16)}"
 
         # Do we have a prefix yet?
         @file_prefix ||= "#{DEFAULT_PREFIX}-#{Time.now.to_f.to_s.gsub(/\./,'-')}"
@@ -150,6 +149,7 @@ module Ebooks
 
         full_virtual_filename
       end
+      private :file
 
       # Create a random string of word characters (filename friendly)
       # @param character_number_array [Integer, Range<Integer>, Array<Integer, Range<Integer>>] number of characters to generate.
@@ -188,6 +188,7 @@ module Ebooks
 
         random_string
       end
+      private :random_word
 
       # Fetch a file object
       # @param virtual_filename [String] object to look for
@@ -198,6 +199,7 @@ module Ebooks
 
         @file_hash[virtual_filename]
       end
+      private :fetch
 
       # Get a real path for a virtual filename
       # @param (see ::fetch)
@@ -206,12 +208,14 @@ module Ebooks
       def path(virtual_filename)
         fetch(virtual_filename).path
       end
+      private :path
 
       # Creates a scheduler
       # @return [Rufus::Scheduler]
       def scheduler
         @scheduler_variable ||= Rufus::Scheduler.new
       end
+      private :scheduler
 
       # Queues a file for deletion and deletes all queued files if possible
       # @param trash_files [String, Array<String>] files to queue for deletion
@@ -300,6 +304,7 @@ module Ebooks
         # If we survived this long, everything is all set!
         destination_filename
       end
+      private :download
 
       # Copies a file into directory
       # @param source_filename [String] relative path of image to copy or an extension for an empty file
@@ -320,6 +325,7 @@ module Ebooks
 
         destination_filename
       end
+      private :copy
 
       # Puts a file into directory, downloading or copying as necesscary
       # @param source_file [String] relative path or internet address of image
@@ -337,10 +343,8 @@ module Ebooks
       # @param file_list [String, Array<String>] names of files to edit
       # @yield [file_name] provides full filenames of files for block to manipulate
       # @raise [Ebooks::TweetPic::NoSuchFileError] if files don't exist
+      # @raise [ArgumentError] if no block is given
       def edit(file_list, &block)
-        # This method doesn't do anything without a block
-        return unless block_given?
-
         # Turn file_list into an array if it's not an array
         file_list = [file_list] unless file_list.is_a? Array
 
@@ -349,6 +353,9 @@ module Ebooks
 
         # Raise if we have no files to work with
         raise NoSuchFileError, 'Files don\'t exist' if file_list.empty?
+
+        # This method doesn't do anything without a block
+        raise ArgumentError, 'block expected but none given' unless block_given?
 
         # Iterate over files, giving their full filenames over to the block
         file_list.each do |file_list_each|
@@ -383,21 +390,14 @@ module Ebooks
       #   Check if a list's length is equal to, less than, or greater than limit
       #   @param check_list [#length] object to check length of
       #   @return [Integer] difference between length and the limit, with negative values meaning length is below limit.
-      def limit(*args)
+      def limit(check_list = nil)
         # Twitter's API page just says, "You may associated[sic] up to 4 media to a Tweet," with no information on how to dynamically get this value.
         tweet_picture_limit = 4
 
-        case args.length
-        when 0
-          tweet_picture_limit
-        when 1
-          if args[0].respond_to? :length
-            args[0].length - tweet_picture_limit
-          else
-            raise ArgumentError, "undefined method 'length' for #{args[0].class.to_s}"
-          end
+        if check_list
+          check_list.length - tweet_picture_limit
         else
-          raise ArgumentError, "Incorrect number of arguments: expected 0 or 1, got #{args.length}"
+          tweet_picture_limit
         end
       end
 
@@ -407,7 +407,7 @@ module Ebooks
       # @param upload_options [Hash] options hash passed while uploading images
       # @param [Proc] a proc meant to be passed to {#edit}
       # @return [Hash{Symbol=>String}] A hash containing a single :media_ids key/value pair for update options
-      # @raise [Ebooks::TweetPic::NoUploadedFilesError] if no files in pic_list could be uploaded
+      # @raise [StandardError] first error if no files in pic_list could be uploaded
       def process(bot_object, pic_list, upload_options, block)
         # If pic_list isn't an array, make it one.
         pic_list = [pic_list] unless pic_list.is_a? Array
@@ -418,6 +418,8 @@ module Ebooks
         # Create an array to store media IDs from Twitter
         successful_images = []
         uploaded_media_ids = []
+
+        first_exception = nil
 
         # Iterate over picture list
         pic_list.each do |pic_list_each|
@@ -438,12 +440,13 @@ module Ebooks
             successful_images << source_path
             # Delete image. It's okay if this fails.
             delete([temporary_path])
-          rescue
+          rescue => exception
             # If something went wrong, just skip on. No need to log anything.
+            first_exception ||= exception
           end
         end
 
-        raise NoUploadedFilesError, 'None of images provided could be uploaded.' if uploaded_media_ids.empty?
+        raise first_exception if uploaded_media_ids.empty?
 
         # This shouldn't be necessary, but trim down array if it needs to be.
         successful_images = successful_images[0...limit] unless limit(successful_images) < 0
