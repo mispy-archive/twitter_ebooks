@@ -418,5 +418,7 @@ describe Ebooks::TweetPic do
 end
 
 describe PuddiSpec::TweetPic do
-  it 'is a completed _spec test'
+  it 'is a completed _spec test' do
+    expect(false).to be_true
+  end
 end
