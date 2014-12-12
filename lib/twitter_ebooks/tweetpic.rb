@@ -19,7 +19,7 @@ module Ebooks
     def pic_tweet(tweet_text, pic_list, tweet_options = {}, upload_options = {}, &block)
       tweet_options ||= {}
       upload_options ||= {}
-      
+
       tweet_options.merge! Ebooks::TweetPic.process(self, pic_list, upload_options, block)
       tweet(tweet_text, tweet_options)
     end
@@ -37,7 +37,7 @@ module Ebooks
     def pic_reply(reply_tweet, tweet_text, pic_list, tweet_options = {}, upload_options = {}, &block)
       tweet_options ||= {}
       upload_options ||= {}
-      
+
       raise ArgumentError, 'reply_tweet can\'t be a direct message' if reply_tweet.is_a? Twitter::DirectMessage
 
       tweet_options.merge! Ebooks::TweetPic.process(self, pic_list, upload_options, block)
@@ -154,7 +154,7 @@ module Ebooks
       # Create a random string of word characters (filename friendly)
       # @param character_number_array [Integer, Range<Integer>, Array<Integer, Range<Integer>>] number of characters to generate.
       #   types including multiple integers will pick a random one.
-      # @param extra_characters [Array<String>] extra characters 
+      # @param extra_characters [Array<String>] extra characters
       # @return [String] random string with length asked for
       def random_word(character_number_array, extra_characters = [])
         extra_characters ||= []
@@ -311,7 +311,7 @@ module Ebooks
       # @return [String] filename of copied file
       def copy(source_filename)
         file_extension = ''
-        
+
         # Find file-extension
         if source_filename.match /(\.\w+)$/
           file_extension = $1
@@ -319,7 +319,7 @@ module Ebooks
 
         # Create destination filename
         destination_filename = file file_extension
-        
+
         # Do copying, but just leave empty if source_filename is just an extension
         FileUtils.copy(source_filename, path(destination_filename)) unless source_filename == file_extension
 
