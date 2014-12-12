@@ -40,8 +40,8 @@ class MyBot < Ebooks::Bot
   def configure
     # Consumer details come from registering an app at https://dev.twitter.com/
     # Once you have consumer details, use "ebooks auth" for new access tokens
-    self.consumer_key = '' # Your app consumer key
-    self.consumer_secret = '' # Your app consumer secret
+    self.consumer_key = "" # Your app consumer key
+    self.consumer_secret = "" # Your app consumer secret
 
     # Users to block instead of interacting with
     self.blacklist = ['tnietzschequote']
