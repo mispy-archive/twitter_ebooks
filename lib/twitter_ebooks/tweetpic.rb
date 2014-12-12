@@ -134,10 +134,10 @@ module Ebooks
         virtual_filename = @file_variable = @file_variable.to_i.next
 
         # Make a filename, adding on a random part to make it harder to find
-        virtual_filename = "#{random_word(7..13)}-#{virtual_filename}-#{random_word(13..16)}"
+        virtual_filename = "#{random_word 7..13}-#{virtual_filename}-#{random_word 13..16}"
 
         # Do we have a prefix yet?
-        @file_prefix ||= "#{DEFAULT_PREFIX}-#{Time.now.to_f.to_s.gsub(/\./,'-')}"
+        @file_prefix ||= "#{DEFAULT_PREFIX}-#{Time.now.to_f.to_s.gsub /\./, '-'}"
 
         # Create a new real file(name)
         real_file = Tempfile.create(["#{@file_prefix}-#{virtual_filename}-", file_extension])

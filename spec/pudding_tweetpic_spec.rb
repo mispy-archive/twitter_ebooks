@@ -138,7 +138,7 @@ describe Ebooks::TweetPic do
       extensions = __::SUPPORTED_FILETYPES
       filetype = '.'
       loop do
-        filetype = ".#{random_letters(3..5)}"
+        filetype = ".#{random_letters 3..5}"
         break unless extensions.include? filetype
       end
       expect { __! :file, filetype }.to raise_error __::FiletypeError
@@ -177,7 +177,7 @@ describe Ebooks::TweetPic do
         min_count = Random.rand(5..25)
         max_count = min_count + Random.rand(10..20)
         extra_characters = [*' '..'~']
-        criteria = /[#{Regexp.escape(extra_characters.join)}]{#{min_count},#{max_count}}/
+        criteria = /[#{Regexp.escape extra_characters.join}]{#{min_count},#{max_count}}/
         expect(__! :random_word, min_count..max_count, extra_characters).to match criteria
       end
     end
@@ -321,19 +321,19 @@ describe Ebooks::TweetPic do
 
   describe :get do
     it 'calls #download for http uris' do
-      fake_uri = "http://#{random_letters(5..15)}/#{random_letters(5..10)}.#{random_filetype}"
+      fake_uri = "http://#{random_letters 5..15}/#{random_letters 5..10}.#{random_filetype}"
       expect(__).to receive(:download)
       __.get fake_uri
     end
 
     it 'calls #download for https uris' do
-      fake_uri = "https://#{random_letters(5..15)}/#{random_letters(5..10)}.#{random_filetype}"
+      fake_uri = "https://#{random_letters 5..15}/#{random_letters 5..10}.#{random_filetype}"
       expect(__).to receive(:download)
       __.get fake_uri
     end
 
     it 'calls #copy for non uris' do
-      fake_path = "#{random_letters(30..35, ['/'])}.#{random_filetype}"
+      fake_path = "#{random_letters 30..35, ['/']}.#{random_filetype}"
       expect(__).to receive(:copy)
       __.get fake_path
     end
