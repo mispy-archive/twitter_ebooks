@@ -180,10 +180,15 @@ module Ebooks
       @seen_tweets ||= {}
 
       @username = username
+      @delay_range ||= 1..6
       configure
 
       b.call(self) unless b.nil?
       Bot.all << self
+    end
+
+    def configure
+      raise ConfigurationError, "Please override the 'configure' method for subclasses of Ebooks::Bot."
     end
 
     # Find or create the conversation context for this tweet
