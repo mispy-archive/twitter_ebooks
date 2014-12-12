@@ -379,7 +379,8 @@ module Ebooks
         end
 
         log "Replying to @#{ev.user.screen_name} with: #{meta.reply_prefix + text}"
-        tweet = twitter.update(meta.reply_prefix + text, opts.merge({in_reply_to_status_id: ev.id}))
+        text = meta.reply_prefix + text unless text.match /@#{Regexp.escape ev.user.screen_name}/i
+        tweet = twitter.update(text, opts.merge(in_reply_to_status_id: ev.id))
         conversation(tweet).add(tweet)
         tweet
       else
