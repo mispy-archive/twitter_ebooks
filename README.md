@@ -17,7 +17,7 @@ A framework for building interactive twitterbots which respond to mentions/DMs. 
 - Non-participating users in a mention chain will be dropped after a few tweets
 - [API documentation](http://rdoc.info/github/mispy/twitter_ebooks) and tests
 
-Note that 3.0 is not backwards compatible with 2.x, so upgrade carefully!
+Note that 3.0 is not backwards compatible with 2.x, so upgrade carefully! In particular, **make sure to regenerate your models** since the storage format changed.
 
 ## Installation
 
@@ -40,8 +40,8 @@ class MyBot < Ebooks::Bot
   def configure
     # Consumer details come from registering an app at https://dev.twitter.com/
     # Once you have consumer details, use "ebooks auth" for new access tokens
-    self.consumer_key = '' # Your app consumer key
-    self.consumer_secret = '' # Your app consumer secret
+    self.consumer_key = "" # Your app consumer key
+    self.consumer_secret = "" # Your app consumer secret
 
     # Users to block instead of interacting with
     self.blacklist = ['tnietzschequote']
@@ -87,7 +87,7 @@ MyBot.new("abby_ebooks") do |bot|
 end
 ```
 
-'ebooks start' will run all defined bots in their own threads. The easiest way to run bots in a semi-permanent fashion is with [Heroku](https://www.heroku.com); just make an app, push the bot repository to it, enable a worker process in the web interface and it ought to chug along merrily forever.
+`ebooks start` will run all defined bots in their own threads. The easiest way to run bots in a semi-permanent fashion is with [Heroku](https://www.heroku.com); just make an app, push the bot repository to it, enable a worker process in the web interface and it ought to chug along merrily forever.
 
 The underlying streaming and REST clients from the [twitter gem](https://github.com/sferik/twitter) can be accessed at `bot.stream` and `bot.twitter` respectively.
 
