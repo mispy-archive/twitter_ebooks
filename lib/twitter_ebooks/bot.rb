@@ -30,7 +30,7 @@ module Ebooks
       usertweets = @tweets.select { |t| t.user.screen_name.downcase == username.downcase }
 
       if usertweets.length > 2
-        if (usertweets[-1].created_at - usertweets[-3].created_at) < 30
+        if (usertweets[-1].created_at - usertweets[-3].created_at) < 10
           return true
         end
       end
@@ -181,10 +181,15 @@ module Ebooks
       @seen_tweets ||= {}
 
       @username = username
+      @delay_range ||= 1..6
       configure
 
       b.call(self) unless b.nil?
       Bot.all << self
+    end
+
+    def configure
+      raise ConfigurationError, "Please override the 'configure' method for subclasses of Ebooks::Bot."
     end
 
     # Find or create the conversation context for this tweet
@@ -380,7 +385,8 @@ module Ebooks
         end
 
         log "Replying to @#{ev.user.screen_name} with: #{meta.reply_prefix + text}"
-        tweet = twitter.update(meta.reply_prefix + text, opts.merge({in_reply_to_status_id: ev.id}))
+        text = meta.reply_prefix + text unless text.match /@#{Regexp.escape ev.user.screen_name}/i
+        tweet = twitter.update(text, opts.merge(in_reply_to_status_id: ev.id))
         conversation(tweet).add(tweet)
         tweet
       else
