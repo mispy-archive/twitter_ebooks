@@ -2,6 +2,7 @@
 require 'twitter'
 require 'rufus/scheduler'
 require 'ostruct'
+require_relative 'configfile.rb'
 
 module Ebooks
   class ConfigurationError < Exception
@@ -155,9 +156,6 @@ module Ebooks
     # @return [Range, Integer] range of seconds to delay in delay method
     attr_accessor :delay_range
 
-    # @return [Hash] configuration loaded from config file. may be empty, if no file was loaded
-    attr_reader :config
-
     # @return [Array] list of all defined bots
     def self.all; @@all ||= []; end
 
@@ -187,120 +185,10 @@ module Ebooks
       @delay_range ||= 1..6
       configure
 
-      @config = read_config_file(username)
-      @config ||= {}
-      freeze_recursive(@config)
+      config(username)
 
       b.call(self) unless b.nil?
       Bot.all << self
-    end
-
-    # Used to freeze @config and everything in it, so it can't be edited.
-    # @param object to freeze
-    def freeze_recursive(object)
-      # Does the object contain anything?
-      if object.respond_to? :each
-        # It might! So recurse through it.
-        object.each do |thing|
-          # Run this on it as well.
-          freeze_recursive(thing)
-        end
-      end
-      # Finally, freeze the object.
-      object.freeze
-    end
-
-    # Reads a configuration file for this bot. Completely okay with this not being a configuration file, because then it just does nothing.
-    # @param file_name [String] a filename of a config file. doesn't have to be a file, because it could also be a username
-    # @return [Hash] data obtained from read_config_file
-    def read_config_file(file_name)
-      raise 'read_config_file has already been called' if defined? @config
-      return unless file_name.match /\.\w+$/
-      reader = File.method :read
-      case $&.downcase
-      when '.yaml'
-        require 'yaml'
-        parser = YAML.method :load
-      when '.json'
-        require 'json'
-        parser = JSON.method :parse
-      when '.env'
-        # Please put these things into your ENV:
-        # EBOOKS_USERNAME_SUFFIX, EBOOKS_CONSUMER_KEY_SUFFIX, EBOOKS_CONSUMER_SECRET_SUFFIX
-        # EBOOKS_ACCESS_TOKEN_SUFFIX, EBOOKS_ACCESS_TOKEN_SECRET_SUFFIX
-        # Where suffix is the word you passed to #new in all caps. ('suffix.env' would be _SUFFIX's filename.)
-        def reader_method(virtual_filename)
-          # Until we add the 'dotenv' rubygem, this does NOT work with files!
-          # if File.file? virtual_filename
-            # require 'dotenv'
-            # Dotenv.load virtual_filename
-          # end
-
-          # First, chop off .env
-          prefix = 'EBOOKS_'
-          if virtual_filename.match /.*#{Regexp.escape(File::SEPARATOR)}(.+)\.env$/
-            suffix = '_' + $+.upcase
-          else
-            suffix = '_' + virtual_filename[0...-4].upcase
-          end
-          return_hash = {}
-          ENV.each do |key, value|
-            if key.start_with?(prefix) && key.end_with?(suffix)
-              return_hash[key] = value
-            end
-          end
-          return [prefix, return_hash, suffix]
-        end
-        # Grab variables out of hash
-        def parser_method(input)
-          prefix = input[0]
-          parse_hash = input[1]
-          suffix = input[2]
-          config_hash = {'twitter' => {}}
-          config_twitter = config_hash['twitter']
-
-          ['username', 'consumer key', 'consumer secret', 'access token', 'access token secret'].each do |name|
-            env_name = prefix + name.upcase.gsub(/ /, '_') + suffix
-            config_twitter[name] = parse_hash[env_name] if parse_hash.has_key? env_name
-          end
-
-          config_hash
-        end
-
-        reader = self.method :reader_method
-        parser = self.method :parser_method
-      else
-        return
-      end
-
-      # This line is super fancy.
-      parsed_data = parser.call reader.call(file_name)
-
-      # Parse parsed_data a bit.
-      if parsed_data.has_key? 'twitter'
-        t_config = parsed_data['twitter']
-
-        # Grab username from config
-        if t_config.has_key? 'username'
-          username = t_config['username']
-          username = username[1..-1] if username.start_with? '@'
-          @username = username
-        end
-
-        # Grab consumer key and secret from config
-        @consumer_key = t_config['consumer key'] if t_config.has_key? 'consumer key'
-        @consumer_secret = t_config['consumer secret'] if t_config.has_key? 'consumer secret'
-
-        # Grab access token and secret from config
-        @access_token = t_config['access token'] if t_config.has_key? 'access token'
-        @access_token_secret = t_config['access token secret'] if t_config.has_key? 'access token secret'
-      end
-
-      parsed_data
-    rescue => exception
-      # We don't really care if this fails, because if it did, there probably wasn't a file to read in the first place.
-      # Unless we failed if this method was already called, of course.
-      raise exception if defined? @config
     end
 
     def configure
