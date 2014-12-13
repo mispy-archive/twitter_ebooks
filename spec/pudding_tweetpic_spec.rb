@@ -37,11 +37,13 @@ module PuddiSpec
       file
     end
 
-    def make_tempfile
+    def make_tempfile(contents = nil, close = false)
       @_tempfiles ||= []
       filetype = random_filetype
       tempfile = Tempfile.new [random_letters(5..10), filetype]
       @_tempfiles << tempfile
+      tempfile.write contents if contents.is_a? String
+      tempfile.close if close
       tempfile
     end
 
@@ -100,7 +102,7 @@ describe Ebooks::TweetPic do
   end
 
   let :__twitter do
-    @__twitter ||= spy('twitter')
+    @__twitter ||= instance_spy('Twitter::REST::Client')
   end
 
   after :each do
@@ -268,15 +270,26 @@ describe Ebooks::TweetPic do
       expect(File.file? path).to be_falsy
     end
 
-    it 'will queue up files it can\'t delete' # do
-      # name = make_file
-      # path = __! :path, name
-      # File.open path do
-        # expect(__.delete name).to include path
-      # end
-      # __! :scheduler.jobs.each(&:call)
-      # expect(__.delete name).to_not include path
-    # end
+    it 'will queue up files it can\'t delete' do
+      name = make_file
+      path = __! :path, name
+
+      allow(File).to receive(:delete).and_raise RuntimeError
+      expect(__!(:scheduler)).to receive(:in).at_least(:once)
+      expect(__.delete name).to include path
+    end
+
+    it 'will schedule additional deletion attempts if deletion fails' do
+      name = make_file
+      path = __! :path, name
+
+      allow(File).to receive(:delete).and_raise RuntimeError
+      expect(__!(:scheduler)).to receive(:in).at_least(:once)
+      expect(__.delete name).to include path
+
+      expect(__).to receive(:delete).at_least(:once)
+      __!(:scheduler).jobs.each(&:call)
+    end
 
     it 'won\'t add non-existient files to its queue' do
       name = make_file
@@ -302,9 +315,7 @@ describe Ebooks::TweetPic do
     end
 
     it 'copies files properly' do
-      source = make_tempfile
-      source.write random_letters 256..512
-      source.close
+      source = make_tempfile random_letters(256..512), true
       source_path = source.path
       destination = __! :copy, source_path
       destination_path = __! :path, destination
@@ -413,6 +424,49 @@ describe Ebooks::TweetPic do
       count = Random.rand 16
       limit = __.limit
       expect(__.limit Array.new(count)).to equal(count - limit)
+    end
+  end
+
+  describe :process do
+    it 'calls a bunch of other already tested methods' do
+      file1_success_id = Random.rand 10000..30000
+      file2_success_id = Random.rand 10000..30000
+      file1_contents = random_letters(64..256), true
+      file2_contents = random_letters(64..256), true
+      file1 = make_tempfile file1_contents, true
+      file2 = make_tempfile file2_contents, true
+      up_options = {random_letters(10..15) => random_letters(10..15)}
+      bot_double = instance_spy('Ebooks::Bot', twitter: __twitter)
+
+      expect(__).to receive(:get).with(file1.path).ordered.and_call_original
+      expect(__).to receive(:edit) do |arg1, b|
+        expect(arg1).to be_a String
+      end.ordered.and_call_original
+      expect(__).to receive(:upload) do |arg1, arg2, arg3|
+        expect(arg1).to be __twitter
+        expect(arg2).to be_a String
+        expect(arg3).to eq up_options
+        expect(file1_contents).to eq File.read __!(:path, arg2)
+        file1_success_id
+      end.ordered
+      expect(__).to receive(:delete).with(kind_of(String)).ordered.and_call_original
+
+      expect(__).to receive(:get).with(file2.path).ordered.and_call_original
+      expect(__).to receive(:edit) do |arg1, b|
+        expect(arg1).to be_a String
+      end.ordered.and_call_original
+      expect(__).to receive(:upload) do |arg1, arg2, arg3|
+        expect(arg1).to be __twitter
+        expect(arg2).to be_a String
+        expect(arg3).to eq up_options
+        expect(file2_contents).to eq File.read __!(:path, arg2)
+        file2_success_id
+      end.ordered
+      expect(__).to receive(:delete).with(kind_of(String)).ordered.and_call_original
+
+      expect do |testblock|
+        expect(__.process bot_double, [file1.path, file2.path], up_options, testblock)
+      end.to yield_successive_args(String, String)
     end
   end
 end
