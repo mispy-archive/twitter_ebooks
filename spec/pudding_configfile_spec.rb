@@ -26,6 +26,7 @@ module PuddiSpec
     def my
       @PuddiSpec_current_test_bot.config
     end
+    alias_method :my_hash, :my
 
     def expect_me
       expect(my)
@@ -135,7 +136,7 @@ describe Ebooks::Bot do
 
     it 'returns the same hash every time' do
       hello
-      expect_me to eq my
+      expect_me.to eq my_hash
     end
 
     it 'can parse yaml' do
