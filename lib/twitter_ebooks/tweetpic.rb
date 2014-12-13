@@ -51,7 +51,7 @@ module Ebooks
     # @yield (see #pic_reply)
     def pic_reply?(reply_tweet, tweet_text, pic_list, tweet_options = {}, upload_options = {}, &block)
       unless pic_list.empty?
-        pic_reply(reply_tweet, tweet_text, pic_list, tweet_options = {}, upload_options = {}, &block)
+        pic_reply(reply_tweet, tweet_text, pic_list, tweet_options, upload_options, &block)
       end
     end
   end
@@ -439,6 +439,7 @@ module Ebooks
             # If we made it this far, we've pretty much succeeded
             successful_images << source_path
             # Delete image. It's okay if this fails.
+
             delete(temporary_path)
           rescue => exception
             # If something went wrong, just skip on. No need to log anything.

@@ -5,15 +5,25 @@ require 'spec_helper'
 require 'tempfile'
 
 module PuddiSpec
-  module EbooksBot
-    module Pic_
-      class TestBot < Ebooks::Bot
-        def configure
-        end
+  module TweetPic
+    class TestBot < Ebooks::Bot
+      attr_accessor :twitter
+
+      def configure
       end
     end
-  end
-  module TweetPic
+
+    def random_letters(length, extra = [])
+      length = [*length] if length.is_a? Range
+      length = length.sample if length.is_a? Array
+      extra |= LOWERCASE_LETTERS
+      string = ''
+      length.times do
+        string += extra.sample
+      end
+      string
+    end
+
     LOWERCASE_LETTERS = [*'a'..'z']
 
     def random_letters(length, extra = [])
@@ -28,7 +38,7 @@ module PuddiSpec
     end
 
     def random_filetype
-      __::SUPPORTED_FILETYPES.values.uniq.sample
+      Ebooks::TweetPic::SUPPORTED_FILETYPES.values.uniq.sample
     end
 
     def make_file
@@ -53,7 +63,10 @@ module PuddiSpec
     end
 
     def delete_files
-      __.delete __.files
+      allow(Ebooks::TweetPic).to receive(:delete).and_call_original
+      allow(File).to receive(:delete).and_call_original
+      allow(Ebooks::TweetPic).to receive(:scheduler).and_call_original
+      Ebooks::TweetPic.delete Ebooks::TweetPic.files
     end
 
     def close_tempfiles!
@@ -80,29 +93,87 @@ end
 
 describe Ebooks::Bot do
   describe '#pic_' do
-    include PuddiSpec
-    include PuddiSpec::EbooksBot::Pic_
-  end
-end
+    include PuddiSpec::TweetPic
 
-RSpec.shared_examples 'PuddiSpec/TweetPic/NoSuchFileError' do |method_name|
-  it 'raises an error when a file doesn\'t exist' do
-    expect do
-      __! method_name, random_letters(5..25)
-    end.to raise_error __::NoSuchFileError
+    let :__ do
+      PuddiSpec::TweetPic::TestBot.new('')
+    end
+
+    let :__twitter do
+      instance_spy('Twitter::REST::Client')
+    end
+
+    let :__tweetpic do
+      Ebooks::TweetPic
+    end
+
+    before :each do
+      __.twitter = __twitter
+    end
+
+    RSpec.shared_examples 'PuddiSpec/TweetPic/pic_ methods' do
+      it 'calls #process'
+
+      it 'is incomplete'
+    end
+
+    describe :pic_tweet do
+      include_examples 'PuddiSpec/TweetPic/pic_ methods'
+
+      it 'is incomplete'
+    end
+
+    describe :pic_reply do
+      include_examples 'PuddiSpec/TweetPic/pic_ methods'
+
+      it 'is incomplete'
+    end
+
+    describe :pic_reply? do
+      it 'calls pic_reply when pic_list isn\'t empty' do
+        reply_tweet = spy
+        tweet_text = random_letters 10..25
+        pic_list = [random_letters(10..25) + random_filetype]
+        tweet_options = {random_letters(10..25) => random_letters(10..25)}
+        upload_options = {random_letters(10..25) => random_letters(10..25)}
+        expect(__).to receive(:pic_reply).with(reply_tweet, tweet_text, pic_list, tweet_options, upload_options).and_yield(random_letters 25..50)
+
+        expect do |block|
+          __.pic_reply? reply_tweet, tweet_text, pic_list, tweet_options, upload_options, &block
+        end.to yield_control
+      end
+
+      it 'doesn\'t call pic_reply when pic_list is empty' do
+        reply_tweet = spy
+        tweet_text = random_letters 10..25
+        pic_list = []
+        expect(__).to_not receive(:pic_reply)
+
+        expect do |block|
+          __.pic_reply? reply_tweet, tweet_text, pic_list, &block
+        end.to_not yield_control
+      end
+    end
   end
 end
 
 describe Ebooks::TweetPic do
-  include PuddiSpec
   include PuddiSpec::TweetPic
+
+  RSpec.shared_examples 'PuddiSpec/TweetPic/NoSuchFileError' do |method_name|
+    it 'raises an error when a file doesn\'t exist' do
+      expect do
+        __! method_name, random_letters(5..25)
+      end.to raise_error __::NoSuchFileError
+    end
+  end
 
   let :__ do
     Ebooks::TweetPic
   end
 
   let :__twitter do
-    @__twitter ||= instance_spy('Twitter::REST::Client')
+    instance_spy('Twitter::REST::Client')
   end
 
   after :each do
@@ -275,7 +346,7 @@ describe Ebooks::TweetPic do
       path = __! :path, name
 
       allow(File).to receive(:delete).and_raise RuntimeError
-      expect(__!(:scheduler)).to receive(:in).at_least(:once)
+      expect(__).to receive(:scheduler).and_call_original
       expect(__.delete name).to include path
     end
 
@@ -284,10 +355,11 @@ describe Ebooks::TweetPic do
       path = __! :path, name
 
       allow(File).to receive(:delete).and_raise RuntimeError
-      expect(__!(:scheduler)).to receive(:in).at_least(:once)
+      expect(__).to receive(:scheduler).and_call_original
       expect(__.delete name).to include path
 
-      expect(__).to receive(:delete).at_least(:once)
+      expect(__).to receive(:delete).at_least(:once).and_call_original
+      expect(__).to receive(:scheduler).at_least(:once).and_call_original
       __!(:scheduler).jobs.each(&:call)
     end
 
@@ -305,6 +377,8 @@ describe Ebooks::TweetPic do
         __.file
       end.to raise_error NoMethodError
     end
+
+    it 'is incomplete'
   end
 
   describe :copy do
@@ -429,44 +503,61 @@ describe Ebooks::TweetPic do
 
   describe :process do
     it 'calls a bunch of other already tested methods' do
-      file1_success_id = Random.rand 10000..30000
-      file2_success_id = Random.rand 10000..30000
-      file1_contents = random_letters(64..256), true
-      file2_contents = random_letters(64..256), true
-      file1 = make_tempfile file1_contents, true
-      file2 = make_tempfile file2_contents, true
+      file_success_id = Random.rand 10000..30000
+      file_contents = random_letters 64..256
+      file = make_tempfile file_contents, true
       up_options = {random_letters(10..15) => random_letters(10..15)}
-      bot_double = instance_spy('Ebooks::Bot', twitter: __twitter)
+      bot_spy = instance_spy('Ebooks::Bot', twitter: __twitter)
 
-      expect(__).to receive(:get).with(file1.path).ordered.and_call_original
-      expect(__).to receive(:edit) do |arg1, b|
-        expect(arg1).to be_a String
-      end.ordered.and_call_original
+      expect(__).to receive(:get).with(file.path).ordered.and_call_original
+      expect(__).to receive(:edit).with(kind_of(String)).ordered.and_call_original
       expect(__).to receive(:upload) do |arg1, arg2, arg3|
         expect(arg1).to be __twitter
         expect(arg2).to be_a String
         expect(arg3).to eq up_options
-        expect(file1_contents).to eq File.read __!(:path, arg2)
-        file1_success_id
-      end.ordered
-      expect(__).to receive(:delete).with(kind_of(String)).ordered.and_call_original
-
-      expect(__).to receive(:get).with(file2.path).ordered.and_call_original
-      expect(__).to receive(:edit) do |arg1, b|
-        expect(arg1).to be_a String
-      end.ordered.and_call_original
-      expect(__).to receive(:upload) do |arg1, arg2, arg3|
-        expect(arg1).to be __twitter
-        expect(arg2).to be_a String
-        expect(arg3).to eq up_options
-        expect(file2_contents).to eq File.read __!(:path, arg2)
-        file2_success_id
+        expect(file_contents).to eq File.read __!(:path, arg2)
+        file_success_id
       end.ordered
       expect(__).to receive(:delete).with(kind_of(String)).ordered.and_call_original
 
       expect do |testblock|
-        expect(__.process bot_double, [file1.path, file2.path], up_options, testblock)
-      end.to yield_successive_args(String, String)
+        expect(__.process bot_spy, [file.path], up_options, testblock)
+      end.to yield_control
+
+      allow(__).to receive(:delete).and_call_original
+    end
+
+    it 'returns the first exception' do
+      file = make_tempfile nil, true
+      bot_spy = instance_spy('Ebooks::Bot', twitter: __twitter)
+
+      path1, path2 = random_letters(10..15), file.path
+      error1, error2 = nil, nil
+
+      def empty_method(*args); end
+
+      begin
+        __.process(bot_spy, path1, {}, method(:empty_method))
+      rescue => error
+        error1 = error
+      end
+      expect(error1).to be_a(StandardError)
+
+      begin
+        __.process(bot_spy, path2, {}, method(:empty_method))
+      rescue => error
+        error2 = error
+      end
+      expect(error2).to be_a(StandardError)
+
+      expect do
+        __.process(bot_spy, [path1, path2], {}, method(:empty_method))
+      end.to raise_error(error1.class)
+
+      expect do
+        __.process(bot_spy, [path2, path1], {}, method(:empty_method))
+      end.to raise_error(error2.class)
+
     end
   end
 end
