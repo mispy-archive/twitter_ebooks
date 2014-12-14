@@ -49,7 +49,7 @@ class MyBot < Ebooks::Bot
 end
 
 # Make a MyBot and attach it to an account
-MyBot.new("{{BOT_NAME}}") do |bot|
-  bot.access_token = "" # Token connecting the app to this account
-  bot.access_token_secret = "" # Secret connecting the app to this account
+MyBot.new('{{BOT_NAME}}') do |bot|
+  bot.access_token = '' # Token connecting the app to this account
+  bot.access_token_secret = '' # Secret connecting the app to this account
 end
