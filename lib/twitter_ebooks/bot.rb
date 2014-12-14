@@ -166,8 +166,53 @@ module Ebooks
 
     # Logs info to stdout in the context of this bot
     def log(*args)
-      STDOUT.print "@#{@username}: " + args.map(&:to_s).join(' ') + "\n"
+      # Put @ in front of username so users don't get confused by double @
+      STDOUT.print log_handler.call("@#{@username}", args.map(&:to_s).join(' ')) + "\n"
       STDOUT.flush
+    end
+
+    # Cache whether or not we have a log handler so we don't need to re-process it every time.
+    def log_handler
+      return @log_handler if defined? @log_handler
+      default_handler = method(:on_log_default)
+
+      # Does on_log exist?
+      if respond_to? :on_log
+        # It does, but we still need to make sure it actually displays log messages.
+        trial_method = method(:on_log)
+
+        # Trial method fails unless it accepts at least two arguments.
+        return @log_handler = default_handler unless trial_method.arity == 2 || trial_method.arity < 0
+
+        2.times do
+          # Generate a random number
+          msg = Random.rand(1000000..9000000).to_s
+          return_value = trial_method.call('', msg)
+
+          # Trial method fails unless it returns messages given to it as a string.
+          unless return_value.is_a?(String) && return_value.include?(msg)
+            # Print an error message unless there simply wasn't a return value.
+            unless return_value.nil?
+              STDOUT.print "Warning: @#{username}'s on_log method must return a string containing\n"
+              STDOUT.print "         its second argument. Falling back to default log format.\n"
+              STDOUT.flush
+            end
+
+            return @log_handler = default_handler
+          end
+        end
+
+        # Looks like it passed.
+        @log_handler = trial_method
+      else
+        # It doesn't, so just set it to default.
+        @log_handler = default_handler
+      end
+    end
+
+    # Default log handler
+    def on_log_default(name, msg)
+      "#{name}: #{msg}"
     end
 
     # Initializes and configures bot

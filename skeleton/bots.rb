@@ -46,6 +46,11 @@ class MyBot < Ebooks::Bot
     # Reply to a tweet in the bot's timeline
     # reply(tweet, "nice tweet")
   end
+
+  def on_log(bot_name, log_message)
+    # Add a timestamp to console logs this bot makes
+    # "#{Time.now.strftime('%c')} - #{bot_name}: #{log_message}"
+  end
 end
 
 # Make a MyBot and attach it to an account
