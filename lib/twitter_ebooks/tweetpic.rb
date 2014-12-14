@@ -1,6 +1,6 @@
 # encoding: utf-8
 require 'rufus/scheduler'
-require 'net/http'
+require 'open-uri'
 require 'tempfile'
 
 module Ebooks
@@ -20,8 +20,9 @@ module Ebooks
       tweet_options ||= {}
       upload_options ||= {}
 
-      tweet_options.merge! Ebooks::TweetPic.process(self, pic_list, upload_options, block)
-      tweet(tweet_text, tweet_options)
+      media_options = Ebooks::TweetPic.process self, pic_list, upload_options, block
+
+      tweet tweet_text, tweet_options.merge(media_options)
     end
     alias_method :pictweet, :pic_tweet
 
@@ -40,8 +41,9 @@ module Ebooks
 
       raise ArgumentError, 'reply_tweet can\'t be a direct message' if reply_tweet.is_a? Twitter::DirectMessage
 
-      tweet_options.merge! Ebooks::TweetPic.process(self, pic_list, upload_options, block)
-      reply(reply_tweet, tweet_text, tweet_options)
+      media_options = Ebooks::TweetPic.process self, pic_list, upload_options, block
+
+      reply reply_tweet, tweet_text, tweet_options.merge(media_options)
     end
     alias_method :picreply, :pic_reply
 
@@ -51,7 +53,7 @@ module Ebooks
     # @yield (see #pic_reply)
     def pic_reply?(reply_tweet, tweet_text, pic_list, tweet_options = {}, upload_options = {}, &block)
       unless pic_list.empty?
-        pic_reply(reply_tweet, tweet_text, pic_list, tweet_options, upload_options, &block)
+        pic_reply reply_tweet, tweet_text, pic_list, tweet_options, upload_options, &block
       end
     end
   end
@@ -78,7 +80,6 @@ module Ebooks
 
     # Exceptions
     Error = Class.new RuntimeError
-    HTTPResponseError = Class.new Error
     FiletypeError = Class.new Error
     EmptyFileError = Class.new Error
     NoSuchFileError = Class.new Error
@@ -148,6 +149,9 @@ module Ebooks
         @file_hash[full_virtual_filename] = real_file
 
         full_virtual_filename
+      ensure
+        # Ensure that it's not left open, no matter what happens.
+        real_file.close if real_file.respond_to?(:close) && !real_file.closed?
       end
       private :file
 
@@ -268,40 +272,30 @@ module Ebooks
       # Downloads a file into directory
       # @param uri_string [String] uri of image to download
       # @return [String] filename of downloaded file
-      # @raise [Ebooks::TweetPic::HTTPResponseError] if any http response other than code 200 is received
       # @raise [Ebooks::TweetPic::FiletypeError] if content-type isn't one supported by Twitter
       # @raise [Ebooks::TweetPic::EmptyFileError] if downloaded file is empty for some reason
       def download(uri_string)
-        # Create URI object to download file with
-        uri_object = URI(uri_string)
-        # Create a local variable for file name
+        # Make a variable to hold filename
         destination_filename = ''
-        # Open download thingie
-        Net::HTTP.start(uri_object.host, uri_object.port) do |http_object|
-          http_object.request Net::HTTP::Get.new(uri_object) do |response_object|
-            # Cancel if something goes wrong.
-            raise HTTPResponseError, "'#{uri_string}' caused HTTP Error #{response_object.code}: #{response_object.msg}" unless response_object.code == '200'
-            # Check file format
-            content_type = response_object['content-type']
-            if SUPPORTED_FILETYPES.has_key? content_type
-              destination_filename = file SUPPORTED_FILETYPES[content_type]
-            else
-              raise FiletypeError, "'#{uri_string}' is an unsupported content-type: '#{content_type}'"
-            end
 
-            # Now write to file!
-            File.open(path(destination_filename), 'w') do |current_file|
-              response_object.read_body do |current_chunk|
-                current_file.write current_chunk
-              end
-            end
+        # Prepare to return an error if file is empty
+        empty_file_detector = lambda { |file_size| raise EmptyFileError, "'#{uri_string}' produced an empty file" if file_size == 0 }
+        # Grab file off the internet. open-uri will provide an exception if this errors.
+        URI(uri_string).open(content_length_proc: empty_file_detector) do |downloaded_file|
+          content_type = downloaded_file.content_type
+          if SUPPORTED_FILETYPES.has_key? content_type
+            destination_filename = file SUPPORTED_FILETYPES[content_type]
+          else
+            raise FiletypeError, "'#{uri_string}' is an unsupported content-type: '#{content_type}'"
+          end
+
+          # Everything seems okay, so write to file.
+          File.open path(destination_filename), 'w' do |opened_file|
+            opened_file.write downloaded_file.read
           end
         end
-        # If filesize is empty, something went wrong.
-        downloaded_filesize = File.size path(destination_filename)
-        raise EmptyFileError, "'#{uri_string}' produced an empty file" if downloaded_filesize == 0
 
-        # If we survived this long, everything is all set!
+        # If we haven't exited from an exception yet, so everything is fine!
         destination_filename
       end
       private :download
@@ -332,7 +326,7 @@ module Ebooks
       # @return [String] filename of file in directory
       def get(source_file)
         # Is source_file a url?
-        if source_file.match /^https?:\/\//i # Starts with http(s)://, case insensitive
+        if source_file.match /^(ftp|https?):\/\//i # Starts with http(s)://, case insensitive
           download(source_file)
         else
           copy(source_file)

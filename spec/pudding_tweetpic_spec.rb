@@ -111,22 +111,39 @@ describe Ebooks::Bot do
       __.twitter = __twitter
     end
 
-    RSpec.shared_examples 'PuddiSpec/TweetPic/pic_ methods' do
-      it 'calls #process'
-
-      it 'is incomplete'
-    end
-
     describe :pic_tweet do
-      include_examples 'PuddiSpec/TweetPic/pic_ methods'
-
-      it 'is incomplete'
+      it 'calls #process and #tweet with necessary parameters' do
+        text = random_letters 10..15
+        array = [random_letters(5..15), random_letters(10..20)]
+        tweet_op = {random_letters(5..10) => random_letters(10..15)}
+        upload_op = {random_letters(5..10) => random_letters(10..15)}
+        return_op = {random_letters(15..20) => random_letters(10..15)}
+        final_op = tweet_op.merge return_op
+        proc = Proc.new do
+          random_letters 10..15
+        end
+        expect(__tweetpic).to receive(:process).with(__, array, upload_op, proc).and_return(return_op)
+        expect(__).to receive(:tweet).with(text, final_op)
+        __.pic_tweet text, array, tweet_op, upload_op, &proc
+      end
     end
 
     describe :pic_reply do
-      include_examples 'PuddiSpec/TweetPic/pic_ methods'
-
-      it 'is incomplete'
+      it 'calls #process and #reply with necessary parameters' do
+        text = random_letters 10..15
+        array = [random_letters(5..15), random_letters(10..20)]
+        tweet_op = {random_letters(5..10) => random_letters(10..15)}
+        upload_op = {random_letters(5..10) => random_letters(10..15)}
+        return_op = {random_letters(15..20) => random_letters(10..15)}
+        final_op = tweet_op.merge return_op
+        tweet_obj = double('Twitter::Tweet')
+        proc = Proc.new do
+          random_letters 10..15
+        end
+        expect(__tweetpic).to receive(:process).with(__, array, upload_op, proc).and_return(return_op)
+        expect(__).to receive(:reply).with(tweet_obj, text, final_op)
+        __.pic_reply tweet_obj, text, array, tweet_op, upload_op, &proc
+      end
     end
 
     describe :pic_reply? do
@@ -378,7 +395,29 @@ describe Ebooks::TweetPic do
       end.to raise_error NoMethodError
     end
 
-    it 'is incomplete'
+    it 'downloads images correctly' do
+      local_file = File.read(path 'data/pudding.png')
+      begin
+        name = __! :download, 'https://raw.githubusercontent.com/mispy/twitter_ebooks/master/spec/data/pudding.png'
+      rescue
+        name = __! :download, 'https://raw.githubusercontent.com/Stawberri/twitter_ebooks/pictweet_improved/spec/data/pudding.png'
+      end
+      path = __! :path, name
+      file = File.read path
+      expect(file).to eq local_file
+    end
+
+    it 'produces errors with non-existient files' do
+      expect do
+        __! :download, 'https://github.com/mispy/twitter_ebooks/404'
+      end.to raise_error
+    end
+
+    it 'raises an exception when downloading an unsupported file type' do
+      expect do
+        __! :download, 'https://github.com/mispy/twitter_ebooks'
+      end.to raise_error __::FiletypeError
+    end
   end
 
   describe :copy do
@@ -413,6 +452,12 @@ describe Ebooks::TweetPic do
 
     it 'calls #download for https uris' do
       fake_uri = "https://#{random_letters 5..15}/#{random_letters 5..10}.#{random_filetype}"
+      expect(__).to receive(:download)
+      __.get fake_uri
+    end
+
+    it 'calls #download for ftp uris' do
+      fake_uri = "ftp://#{random_letters 5..15}/#{random_letters 5..10}.#{random_filetype}"
       expect(__).to receive(:download)
       __.get fake_uri
     end
@@ -559,11 +604,5 @@ describe Ebooks::TweetPic do
       end.to raise_error(error2.class)
 
     end
-  end
-end
-
-describe PuddiSpec::TweetPic do
-  it 'is a completed _spec test' do
-    expect(false).to be_true
   end
 end
