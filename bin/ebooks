@@ -264,7 +264,7 @@ STR
             puts e.backtrace.map { |s| "\t"+s }.join("\n")
           end
           bot.log "Sleeping before reconnect"
-          sleep 5
+          sleep 60
         end
       end
     end
