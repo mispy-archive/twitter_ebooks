@@ -38,10 +38,10 @@ class MyBot < Ebooks::Bot
     # Follow a user back
     # follow(user.screen_name)
     #
-    # Generate a picture for whoever just followed you (provide only a file extension)
-    # pic_tweet("@#{user.screen_name} Made you this.", ['.jpg']) do |filename|
+    # Generate a picture for whoever just followed you
+    # pic_tweet("@#{user.screen_name} I made you this.", ['.jpg']) do |filename|
     #   picture = File.new(filename)
-    #   YourOwnLibrary::generate_picture(picture)
+    #   YourOwn::Library.generate_picture(picture)
     #   picture.close
     # end
   end
@@ -53,7 +53,7 @@ class MyBot < Ebooks::Bot
     # Edit a picture tweeted at you
     # pic_reply?(tweet, "'sup", meta(tweet).media_uris) do |filename|
     #   picture = File.new(filename)
-    #   YourOwnLibrary::add_sunglasses(picture)
+    #   YourOwn::Library.add_sunglasses(picture)
     #   picture.close
     # end
   end

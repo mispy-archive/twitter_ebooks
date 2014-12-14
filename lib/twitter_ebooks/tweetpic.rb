@@ -35,7 +35,9 @@ module Ebooks
     # @yield (see #pic_tweet)
     # @raise (see #pic_tweet)
     # @raise [ArgumentError] if reply_tweet is a direct message
-    def pic_reply(reply_tweet, tweet_text, pic_list, tweet_options = {}, upload_options = {}, &block)
+    def pic_reply(reply_tweet, tweet_text, pic_list = nil, tweet_options = {}, upload_options = {}, &block)
+      pic_list ||= meta(reply_tweet).media_uris('large')
+
       tweet_options ||= {}
       upload_options ||= {}
 
@@ -51,7 +53,9 @@ module Ebooks
     # Safe to place directly inside reply with no checks for media beforehand.
     # @param (see #pic_reply)
     # @yield (see #pic_reply)
-    def pic_reply?(reply_tweet, tweet_text, pic_list, tweet_options = {}, upload_options = {}, &block)
+    def pic_reply?(reply_tweet, tweet_text, pic_list = nil, tweet_options = {}, upload_options = {}, &block)
+      pic_list ||= meta(reply_tweet).media_uris('large')
+
       unless pic_list.empty?
         pic_reply reply_tweet, tweet_text, pic_list, tweet_options, upload_options, &block
       end

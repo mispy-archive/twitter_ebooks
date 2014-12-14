@@ -129,6 +129,16 @@ describe Ebooks::Bot do
     end
 
     describe :pic_reply do
+      it 'looks for tweet media by itself when pic_list is nil' do
+        meta_spy = instance_spy(Ebooks::TweetMeta)
+        expect(meta_spy).to receive(:media_uris).and_throw(:success)
+        expect(__).to receive(:meta).and_return(meta_spy)
+
+        catch :success do
+          __.pic_reply spy, ''
+        end
+      end
+
       it 'calls #process and #reply with necessary parameters' do
         text = random_letters 10..15
         array = [random_letters(5..15), random_letters(10..20)]
@@ -147,7 +157,17 @@ describe Ebooks::Bot do
     end
 
     describe :pic_reply? do
-      it 'calls pic_reply when pic_list isn\'t empty' do
+      it 'looks for tweet media by itself when pic_list is nil' do
+        meta_spy = instance_spy(Ebooks::TweetMeta)
+        expect(meta_spy).to receive(:media_uris).and_throw(:success)
+        expect(__).to receive(:meta).and_return(meta_spy)
+
+        catch :success do
+          __.pic_reply? spy, ''
+        end
+      end
+
+      it 'calls #pic_reply when pic_list isn\'t empty' do
         reply_tweet = spy
         tweet_text = random_letters 10..25
         pic_list = [random_letters(10..25) + random_filetype]
@@ -160,7 +180,7 @@ describe Ebooks::Bot do
         end.to yield_control
       end
 
-      it 'doesn\'t call pic_reply when pic_list is empty' do
+      it 'doesn\'t call #pic_reply when pic_list is empty' do
         reply_tweet = spy
         tweet_text = random_letters 10..25
         pic_list = []
