@@ -84,8 +84,7 @@ module Ebooks
       # Process mentions to figure out who to reply to
       # i.e. not self and nobody who has seen too many secondary mentions
       reply_mentions = @mentions.reject do |m|
-        username = m.downcase
-        username == @bot.username || !@bot.conversation(ev).can_include?(username)
+        m.downcase == @bot.username.downcase || !@bot.conversation(ev).can_include?(m)
       end
       @reply_mentions = ([ev.user.screen_name] + reply_mentions).uniq
 

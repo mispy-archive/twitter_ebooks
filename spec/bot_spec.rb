@@ -83,7 +83,7 @@ end
 
 describe Ebooks::Bot do
   include Ebooks::Test
-  let(:bot) { TestBot.new('test_ebooks') }
+  let(:bot) { TestBot.new('Test_Ebooks') }
 
   before { Timecop.freeze }
   after { Timecop.return }
