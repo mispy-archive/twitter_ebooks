@@ -208,7 +208,7 @@ module Ebooks
     # Generate some text
     # @param limit [Integer] available characters
     # @param generator [SuffixGenerator, nil]
-    # @param retry_limit [Integer] how many times to retry on duplicates
+    # @param retry_limit [Integer] how many times to retry on invalid tweet
     # @return [String]
     def make_statement(limit=140, generator=nil, retry_limit=10)
       responding = !generator.nil?
