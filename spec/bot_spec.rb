@@ -134,7 +134,11 @@ describe Ebooks::Bot do
 
       Timecop.travel(Time.now + 60)
       bot.receive_event(mock_tweet("spammer", "@test_ebooks @m1sp 3"))
-      expect_tweet(bot, "@spammer echo: 3")
+      expect_tweet(bot, "@spammer @m1sp echo: 3")
+
+      Timecop.travel(Time.now + 60)
+      bot.receive_event(mock_tweet("spammer", "@test_ebooks @m1sp 4"))
+      expect_tweet(bot, "@spammer echo: 4")
     end
   end
 
