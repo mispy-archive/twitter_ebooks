@@ -142,7 +142,7 @@ module Ebooks
         virtual_filename = "#{random_word 7..13}-#{virtual_filename}-#{random_word 13..16}"
 
         # Do we have a prefix yet?
-        @file_prefix ||= "#{DEFAULT_PREFIX}-#{Time.now.to_f.to_s.gsub /\./, '-'}"
+        @file_prefix ||= "#{DEFAULT_PREFIX}-#{Time.now.to_f.to_s.gsub(/\./, '-')}"
 
         # Create a new real file(name)
         real_file = Tempfile.create(["#{@file_prefix}-#{virtual_filename}-", file_extension])
@@ -311,7 +311,7 @@ module Ebooks
         file_extension = ''
 
         # Find file-extension
-        if match_data = source_filename.match /(\.\w+)$/
+        if match_data = source_filename.match(/(\.\w+)$/)
           file_extension = match_data[1]
         end
 
@@ -330,7 +330,7 @@ module Ebooks
       # @return [String] filename of file in directory
       def get(source_file)
         # Is source_file a url?
-        if source_file.match /^(ftp|https?):\/\//i # Starts with http(s)://, case insensitive
+        if source_file =~ /^(ftp|https?):\/\//i # Starts with http(s)://, case insensitive
           download(source_file)
         else
           copy(source_file)
