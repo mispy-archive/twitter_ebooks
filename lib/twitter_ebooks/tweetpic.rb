@@ -311,8 +311,8 @@ module Ebooks
         file_extension = ''
 
         # Find file-extension
-        if source_filename.match /(\.\w+)$/
-          file_extension = $1
+        if match_data = source_filename.match /(\.\w+)$/
+          file_extension = match_data[1]
         end
 
         # Create destination filename
