@@ -331,19 +331,19 @@ STR
     # Process each line of bots.rb
     File.foreach 'bots.rb' do |line|
       # Strip out all whitespace to make matching easier.
-      stripped_line = line.gsub /\s+/, ''
+      stripped_line = line.gsub(/\s+/, '')
       # Drop comments if they exist.
-      stripped_line.gsub! /#[^"']*$/, ''
+      stripped_line.gsub!(/#[^"']*$/, '')
       case stage
       when :looking_for_bot
         # Matches default bot declarations, with an optional # comment at the end or a @ before their name.
-        if stripped_line.match /^\w+\.new\(?(["'])(@?)#{Regexp.escape username}\1\)?do\|(\w+)\|$/
+        if match_data = stripped_line.match(/^\w+\.new\(?(["'])(@?)#{Regexp.escape username}\1\)?do\|(\w+)\|$/)
           # Store the variable they're using for their bot.
-          bot_variable = $3
+          bot_variable = match_data[3]
           # Help them out if they put a @ in front of their bot's username
-          if $2 == '@'
+          if match_data[2] == '@'
             # It's safe to do another regex here because we don't use the last one's $ variables anymore.
-            line = line.gsub /(["'])@(#{Regexp.escape username})\1/, "\\1\\2\\1"
+            line = line.gsub(/(["'])@(#{Regexp.escape username})\1/, "\\1\\2\\1")
           end
           # Switch to next stage
           stage = :replacing_access_tokens
@@ -356,12 +356,12 @@ STR
         # Empty access token line
         when /^#{Regexp.escape bot_variable}\.access_token=(["'])\1$/
           # Replace pairs of quotes containing only spaces with the same type of quote containing token.
-          output += line.gsub /(['"])\s*\1/, "\\1#{access_token}\\1"
+          output += line.gsub(/(['"])\s*\1/, "\\1#{access_token}\\1")
           replaced_token = true
         # Empty access token secret line
         when /^#{Regexp.escape bot_variable}\.access_token_secret=(["'])\1$/
           # Replace pairs of quotes containing only spaces with the same type of quote containing token secret.
-          output += line.gsub /(['"])\s*\1/, "\\1#{access_token_secret}\\1"
+          output += line.gsub(/(['"])\s*\1/, "\\1#{access_token_secret}\\1")
           replaced_secret = true
         # Another bot definition
         when /^\w+\.new\(?["'](@?)\w*["']\)?do\|(\w+)\|$/
@@ -382,8 +382,8 @@ STR
       end
 
       # Also try to detect user's last defined bot class
-      if stripped_line.match /class(\w+)<Ebooks::Bot/
-        bot_class = $1
+      if match_data = stripped_line.match(/class(\w+)<Ebooks::Bot/)
+        bot_class = match_data[1]
       end
     end
 
@@ -393,7 +393,7 @@ STR
       return false if bot_class.empty?
 
       # Generate a new bot definition.
-      output += <<-PuddiDOC.gsub /^ {6}/, ''
+      output += <<-PuddiDOC.gsub(/^ {6}/, '')
 
       # Make a #{bot_class} and attach it to an account
       #{bot_class}.new('#{username}') do |bot|
