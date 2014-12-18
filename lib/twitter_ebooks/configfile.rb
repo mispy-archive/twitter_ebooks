@@ -14,9 +14,10 @@ module Ebooks
       # Set @config here so this can't be run again.
       @config = {}
 
-      return unless file_name.match /\.\w+$/
+      match_data = file_name.match(/\.\w+$/)
+      return unless match_data
       reader = File.method :read
-      case $&.downcase
+      case match_data.to_s.downcase
       when '.yaml'
         require 'yaml'
         parser = YAML.method :load
@@ -37,8 +38,8 @@ module Ebooks
 
           # First, chop off .env
           prefix = 'EBOOKS_'
-          if virtual_filename.match /.*#{Regexp.escape(File::SEPARATOR)}(.+)\.env$/
-            suffix = '_' + $+.upcase
+          if match_data = virtual_filename.match(/.*#{Regexp.escape(File::SEPARATOR)}(.+)\.env$/)
+            suffix = '_' + match_data[-1].upcase
           else
             suffix = '_' + virtual_filename[0...-4].upcase
           end
