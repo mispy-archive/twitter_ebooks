@@ -40,8 +40,8 @@ module Ebooks
     # Figure out whether to keep this user in the reply prefix
     # We want to avoid spamming non-participating users
     def can_include?(username)
-      @tweets.length <= 6 ||
-        !@tweets[-6..-1].select { |t| t.user.screen_name.downcase == username.downcase }.empty?
+      @tweets.length <= 4 ||
+        !@tweets.select { |t| t.user.screen_name.downcase == username.downcase }.empty?
     end
   end
 
