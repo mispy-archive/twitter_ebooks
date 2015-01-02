@@ -427,7 +427,7 @@ module Ebooks
     # @param user [String] username or user id
     def unfollow(user, *args)
       log "Unfollowing #{user}"
-      twiter.unfollow(user, *args)
+      twitter.unfollow(user, *args)
     end
 
     # Tweet something
