@@ -119,12 +119,11 @@ describe Ebooks::Bot do
         upload_op = {random_letters(5..10) => random_letters(10..15)}
         return_op = {random_letters(15..20) => random_letters(10..15)}
         final_op = tweet_op.merge return_op
-        proc = Proc.new do
-          random_letters 10..15
-        end
-        expect(__tweetpic).to receive(:process).with(__, array, upload_op, proc).and_return(return_op)
+        expect(__tweetpic).to receive(:process).with(__, array, upload_op).and_yield(random_letters 25..50).and_return(return_op)
         expect(__).to receive(:tweet).with(text, final_op)
-        __.pic_tweet text, array, tweet_op, upload_op, &proc
+        expect do |block|
+          __.pic_tweet text, array, tweet_op, upload_op, &block
+        end.to yield_control
       end
     end
 
@@ -147,12 +146,11 @@ describe Ebooks::Bot do
         return_op = {random_letters(15..20) => random_letters(10..15)}
         final_op = tweet_op.merge return_op
         tweet_obj = double('Twitter::Tweet')
-        proc = Proc.new do
-          random_letters 10..15
-        end
-        expect(__tweetpic).to receive(:process).with(__, array, upload_op, proc).and_return(return_op)
+        expect(__tweetpic).to receive(:process).with(__, array, upload_op).and_yield(random_letters 25..50).and_return(return_op)
         expect(__).to receive(:reply).with(tweet_obj, text, final_op)
-        __.pic_reply tweet_obj, text, array, tweet_op, upload_op, &proc
+        expect do |block|
+          __.pic_reply tweet_obj, text, array, tweet_op, upload_op, &block
+        end.to yield_control
       end
     end
 
@@ -586,7 +584,7 @@ describe Ebooks::TweetPic do
       expect(__).to receive(:delete).with(kind_of(String)).ordered.and_call_original
 
       expect do |testblock|
-        expect(__.process bot_spy, [file.path], up_options, testblock)
+        expect(__.process bot_spy, [file.path], up_options, &testblock)
       end.to yield_control
 
       allow(__).to receive(:delete).and_call_original
@@ -596,10 +594,11 @@ describe Ebooks::TweetPic do
       file_success_id = Random.rand 10000..30000
       file_contents = random_letters 64..256
       file = make_tempfile file_contents, true
+      up_options = {random_letters(10..15) => random_letters(10..15)}
       bot_spy = instance_spy('Ebooks::Bot', twitter: __twitter)
 
       expect(__).to_not receive(:edit)
-      __.process bot_spy, file.path
+      __.process bot_spy, file.path, up_options
     end
 
     it 'returns the first exception' do
