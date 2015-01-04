@@ -431,7 +431,7 @@ module Ebooks
             # Fetch image
             temporary_path = get(source_path)
             # Allow people to modify image
-            edit(temporary_path, &block)
+            edit(temporary_path, &block) if block.respond_to? :call
             # Upload image to Twitter
             uploaded_media_ids << upload(bot_object.twitter, temporary_path, upload_options)
             # If we made it this far, we've pretty much succeeded
