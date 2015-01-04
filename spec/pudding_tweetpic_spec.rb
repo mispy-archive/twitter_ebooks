@@ -592,6 +592,16 @@ describe Ebooks::TweetPic do
       allow(__).to receive(:delete).and_call_original
     end
 
+    it 'doesn\'t call #edit if there\'s no block' do
+      file_success_id = Random.rand 10000..30000
+      file_contents = random_letters 64..256
+      file = make_tempfile file_contents, true
+      bot_spy = instance_spy('Ebooks::Bot', twitter: __twitter)
+
+      expect(__).to_not receive(:edit)
+      __.process bot_spy, file.path
+    end
+
     it 'returns the first exception' do
       file = make_tempfile nil, true
       bot_spy = instance_spy('Ebooks::Bot', twitter: __twitter)

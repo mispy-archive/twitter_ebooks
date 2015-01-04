@@ -20,7 +20,7 @@ module Ebooks
       tweet_options ||= {}
       upload_options ||= {}
 
-      media_options = Ebooks::TweetPic.process self, pic_list, upload_options, block
+      media_options = Ebooks::TweetPic.process self, pic_list, upload_options, &block
 
       tweet tweet_text, tweet_options.merge(media_options)
     end
@@ -43,7 +43,7 @@ module Ebooks
 
       raise ArgumentError, 'reply_tweet can\'t be a direct message' if reply_tweet.is_a? Twitter::DirectMessage
 
-      media_options = Ebooks::TweetPic.process self, pic_list, upload_options, block
+      media_options = Ebooks::TweetPic.process self, pic_list, upload_options, &block
 
       reply reply_tweet, tweet_text, tweet_options.merge(media_options)
     end
@@ -406,7 +406,7 @@ module Ebooks
       # @param [Proc] a proc meant to be passed to {#edit}
       # @return [Hash{Symbol=>String}] A hash containing a single :media_ids key/value pair for update options
       # @raise [StandardError] first error if no files in pic_list could be uploaded
-      def process(bot_object, pic_list, upload_options, block)
+      def process(bot_object, pic_list, upload_options, &block)
         # If pic_list isn't an array, make it one.
         pic_list = [pic_list] unless pic_list.is_a? Array
 
@@ -431,7 +431,7 @@ module Ebooks
             # Fetch image
             temporary_path = get(source_path)
             # Allow people to modify image
-            edit(temporary_path, &block) if block.respond_to? :call
+            edit(temporary_path, &block) if block_given?
             # Upload image to Twitter
             uploaded_media_ids << upload(bot_object.twitter, temporary_path, upload_options)
             # If we made it this far, we've pretty much succeeded
