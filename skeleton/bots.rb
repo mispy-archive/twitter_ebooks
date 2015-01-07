@@ -46,6 +46,11 @@ class MyBot < Ebooks::Bot
     # Reply to a tweet in the bot's timeline
     # reply(tweet, "nice tweet")
   end
+
+  def on_favorite(user, tweet)
+    # Follow user who just favorited bot's tweet
+    # follow(user.screen_name)
+  end
 end
 
 # Make a MyBot and attach it to an account
