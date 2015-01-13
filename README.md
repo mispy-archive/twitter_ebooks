@@ -135,10 +135,10 @@ The secondary function is the "interesting keywords" list. For example, I use th
 
 ``` ruby
 top100 = model.keywords.take(100)
-tokens = Ebooks::NLP.tokenize(tweet[:text])
+tokens = Ebooks::NLP.tokenize(tweet.text)
 
 if tokens.find { |t| top100.include?(t) }
-  bot.favorite(tweet[:id])
+  favorite(tweet)
 end
 ```
 
