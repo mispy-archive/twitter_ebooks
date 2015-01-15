@@ -254,12 +254,12 @@ module Ebooks
         log "Online!"
         return
       when Twitter::DirectMessage
-        return if ev.sender.screen_name.downcase == @username.downcase # Don't reply to self
+        return if ev.sender.id == @user.id # Don't reply to self
         log "DM from @#{ev.sender.screen_name}: #{ev.text}"
         fire(:message, ev)
       when Twitter::Tweet
         return unless ev.text # If it's not a text-containing tweet, ignore it
-        return if ev.user.screen_name.downcase == @username.downcase # Ignore our own tweets
+        return if ev.user.id == @user.id # Ignore our own tweets
 
         meta = meta(ev)
 
@@ -286,11 +286,11 @@ module Ebooks
       when Twitter::Streaming::Event
         case ev.name
         when :follow
-          return if ev.source.screen_name.downcase == @username.downcase
+          return if ev.source.id == @user.id
           log "Followed by #{ev.source.screen_name}"
           fire(:follow, ev.source)
         when :favorite, :unfavorite
-          return if ev.source.screen_name.downcase == @username.downcase # Ignore our own favorites
+          return if ev.source.id == @user.id # Ignore our own favorites
           log "@#{ev.source.screen_name} #{ev.name.to_s}d: #{ev.target_object.text}"
           fire(ev.name, ev.source, ev.target_object)
         when :user_update
