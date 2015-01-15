@@ -249,31 +249,15 @@ module Ebooks
     # Receive an event from the twitter stream
     # @param ev [Object] Twitter streaming event
     def receive_event(ev)
-      if ev.is_a? Array # Initial array sent on first connection
+      case ev
+      when Array # Initial array sent on first connection
         log "Online!"
         return
-      end
-
-      if ev.is_a? Twitter::DirectMessage
+      when Twitter::DirectMessage
         return if ev.sender.screen_name.downcase == @username.downcase # Don't reply to self
         log "DM from @#{ev.sender.screen_name}: #{ev.text}"
         fire(:message, ev)
-
-      elsif ev.respond_to?(:name)
-        case ev.name
-        when :follow
-          return if ev.source.screen_name.downcase == @username.downcase
-          log "Followed by #{ev.source.screen_name}"
-          fire(:follow, ev.source)
-        when :favorite, :unfavorite
-          return if ev.source.screen_name.downcase == @username.downcase # Ignore our own favorites
-          log "@#{ev.source.screen_name} #{ev.name.to_s}d: #{ev.target_object.text}"
-          fire(ev.name, ev.source, ev.target_object)
-        when :user_update
-          update_user_object ev.source
-        end
-
-      elsif ev.is_a? Twitter::Tweet
+      when Twitter::Tweet
         return unless ev.text # If it's not a text-containing tweet, ignore it
         return if ev.user.screen_name.downcase == @username.downcase # Ignore our own tweets
 
@@ -299,10 +283,21 @@ module Ebooks
         else
           fire(:timeline, ev)
         end
-
-      elsif ev.is_a?(Twitter::Streaming::DeletedTweet) ||
-            ev.is_a?(Twitter::Streaming::Event)
-        # pass
+      when Twitter::Streaming::Event
+        case ev.name
+        when :follow
+          return if ev.source.screen_name.downcase == @username.downcase
+          log "Followed by #{ev.source.screen_name}"
+          fire(:follow, ev.source)
+        when :favorite, :unfavorite
+          return if ev.source.screen_name.downcase == @username.downcase # Ignore our own favorites
+          log "@#{ev.source.screen_name} #{ev.name.to_s}d: #{ev.target_object.text}"
+          fire(ev.name, ev.source, ev.target_object)
+        when :user_update
+          update_user_object ev.source
+        end
+      when Twitter::Streaming::DeletedTweet
+        # Pass
       else
         log ev
       end
