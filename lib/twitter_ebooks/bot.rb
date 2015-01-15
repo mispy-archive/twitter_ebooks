@@ -260,15 +260,17 @@ module Ebooks
         fire(:message, ev)
 
       elsif ev.respond_to?(:name)
-        if ev.name == :follow
+        case ev.name
+        when :follow
           return if ev.source.screen_name.downcase == @username.downcase
           log "Followed by #{ev.source.screen_name}"
           fire(:follow, ev.source)
-
-        elsif ev.name == :favorite || ev.name == :unfavorite
+        when :favorite, :unfavorite
           return if ev.source.screen_name.downcase == @username.downcase # Ignore our own favorites
           log "@#{ev.source.screen_name} #{ev.name.to_s}d: #{ev.target_object.text}"
           fire(ev.name, ev.source, ev.target_object)
+        when :user_update
+          update_user_object ev.source
         end
 
       elsif ev.is_a? Twitter::Tweet
