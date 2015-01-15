@@ -144,6 +144,8 @@ module Ebooks
     attr_accessor :access_token
     # @return [String] OAuth access secret from `ebooks auth`
     attr_accessor :access_token_secret
+    # @return [Twitter::User] Twitter user object of bot
+    attr_accessor :user
     # @return [String] Twitter username of bot
     attr_accessor :username
     # @return [Array<String>] list of usernames to block on contact
@@ -304,6 +306,16 @@ module Ebooks
       end
     end
 
+    # Updates @user and calls on_user_update. Make sure it's the right person before you call it.
+    def update_user_object(new_me = twitter.user)
+      new_me = twitter.user unless new_me.is_a? Twitter::User
+
+      @user = new_me
+      @username = user.name
+
+      fire(:user_update)
+    end
+
     # Configures client and fires startup event
     def prepare
       # Sanity check
@@ -323,12 +335,12 @@ module Ebooks
         exit 1
       end
 
-      real_name = twitter.user.screen_name
-
-      if real_name != @username
-        log "connected to @#{real_name}-- please update config to match Twitter account name"
-        @username = real_name
-      end
+      # Save old name
+      old_name = username
+      # Load user object and actual username
+      update_user_object
+      # Warn about mismatches unless it was clearly intensional
+      log "warning: bot expected to be @#{old_name} but connected to @#{username}" unless username == old_name || old_name.empty?
 
       fire(:startup)
     end
