@@ -294,7 +294,7 @@ module Ebooks
           log "@#{ev.source.screen_name} #{ev.name.to_s}d: #{ev.target_object.text}"
           fire(ev.name, ev.source, ev.target_object)
         when :user_update
-          update_user_object ev.source
+          update_myself ev.source
         end
       when Twitter::Streaming::DeletedTweet
         # Pass
@@ -304,7 +304,7 @@ module Ebooks
     end
 
     # Updates @user and calls on_user_update. Make sure it's the right person before you call it.
-    def update_user_object(new_me = twitter.user)
+    def update_myself(new_me = twitter.user)
       new_me = twitter.user unless new_me.is_a? Twitter::User
 
       @user = new_me
@@ -335,7 +335,7 @@ module Ebooks
       # Save old name
       old_name = username
       # Load user object and actual username
-      update_user_object
+      update_myself
       # Warn about mismatches unless it was clearly intensional
       log "warning: bot expected to be @#{old_name} but connected to @#{username}" unless username == old_name || old_name.empty?
 
