@@ -295,7 +295,9 @@ module Ebooks
 
           # Everything seems okay, so write to file.
           File.open path(destination_filename), 'w' do |opened_file|
-            opened_file.write downloaded_file.read
+            until downloaded_file.eof?
+              opened_file.write downloaded_file.read 1024
+            end
           end
         end
 
