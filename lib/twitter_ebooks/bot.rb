@@ -304,13 +304,10 @@ module Ebooks
       end
     end
 
-    # Updates @user and calls on_user_update. Make sure it's the right person before you call it.
+    # Updates @user and calls on_user_update.
     def update_myself(new_me = twitter.user)
-      new_me = twitter.user unless new_me.is_a? Twitter::User
-
       @user = new_me
       @username = user.name
-
       fire(:user_update)
     end
 
@@ -337,7 +334,7 @@ module Ebooks
       old_name = username
       # Load user object and actual username
       update_myself
-      # Warn about mismatches unless it was clearly intensional
+      # Warn about mismatches unless it was clearly intentional
       log "warning: bot expected to be @#{old_name} but connected to @#{username}" unless username == old_name || old_name.empty?
 
       fire(:startup)
