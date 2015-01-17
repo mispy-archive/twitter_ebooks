@@ -24,8 +24,17 @@ end
 
 module Ebooks::Test
   # Generates a random twitter id
-  def twitter_id
-    (rand*10**18).to_i
+  # Or a non-random one, given a string.
+  def twitter_id(seed = nil)
+    if seed.nil?
+      (rand*10**18).to_i
+    else
+      id = 1
+      seed.downcase.each_byte do |byte|
+        id *= byte/10
+      end
+      id
+    end
   end
 
   # Creates a mock direct message
@@ -33,7 +42,7 @@ module Ebooks::Test
   # @param text DM content
   def mock_dm(username, text)
     Twitter::DirectMessage.new(id: twitter_id,
-                               sender: { id: twitter_id, screen_name: username},
+                               sender: { id: twitter_id(username), screen_name: username},
                                text: text)
   end
 
@@ -45,7 +54,7 @@ module Ebooks::Test
     tweet = Twitter::Tweet.new({
       id: twitter_id,
       in_reply_to_status_id: 'mock-link',
-      user: { id: twitter_id, screen_name: username },
+      user: { id: twitter_id(username), screen_name: username },
       text: text,
       created_at: Time.now.to_s,
       entities: {
@@ -58,14 +67,21 @@ module Ebooks::Test
     tweet
   end
 
+  # Creates a mock user
+  def mock_user(username)
+    Twitter::User.new(id: twitter_id(username), screen_name: username)
+  end
+
   def twitter_spy(bot)
     twitter = spy("twitter")
     allow(twitter).to receive(:update).and_return(mock_tweet(bot.username, "test tweet"))
+    allow(twitter).to receive(:user).with(no_args).and_return(mock_user(bot.username))
     twitter
   end
 
   def simulate(bot, &b)
     bot.twitter = twitter_spy(bot)
+    bot.update_myself # Usually called in prepare
     b.call
   end
 
@@ -95,6 +111,13 @@ describe Ebooks::Bot do
     end
   end
 
+  it "ignores its own dms" do
+    simulate(bot) do
+      expect(bot).to_not receive(:on_message)
+      bot.receive_event(mock_dm("Test_Ebooks", "why am I talking to myself"))
+    end
+  end
+
   it "responds to mentions" do
     simulate(bot) do
       bot.receive_event(mock_tweet("m1sp", "@test_ebooks this is a mention"))
@@ -102,10 +125,25 @@ describe Ebooks::Bot do
     end
   end
 
+  it "ignores its own mentions" do
+    simulate(bot) do
+      expect(bot).to_not receive(:on_mention)
+      expect(bot).to_not receive(:on_timeline)
+      bot.receive_event(mock_tweet("Test_Ebooks", "@m1sp i think that @test_ebooks is best bot"))
+    end
+  end
+
   it "responds to timeline tweets" do
     simulate(bot) do
       bot.receive_event(mock_tweet("m1sp", "some excellent tweet"))
       expect_tweet(bot, "@m1sp fine tweet good sir")
+    end
+  end
+
+  it "ignores its own timeline tweets" do
+    simulate(bot) do
+      expect(bot).to_not receive(:on_timeline)
+      bot.receive_event(mock_tweet("Test_Ebooks", "pudding is cute"))
     end
   end
 
