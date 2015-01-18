@@ -252,7 +252,7 @@ module Ebooks
       case ev
       when Array # Initial array sent on first connection
         log "Online!"
-        fire(:connect)
+        fire(:connect, ev)
         return
       when Twitter::DirectMessage
         return if ev.sender.id == @user.id # Don't reply to self
