@@ -23,7 +23,7 @@ Usage:
      ebooks c[onsole]
      ebooks auth
      ebooks consume <corpus_path> [corpus_path2] [...]
-     ebooks consume-all <corpus_path> [corpus_path2] [...]
+     ebooks consume-all <model_name> <corpus_path> [corpus_path2] [...]
      ebooks gen <model_path> [input]
      ebooks archive <username> [path]
      ebooks tweet <model_path> <botname>
@@ -77,7 +77,7 @@ STR
     Usage: ebooks consume <corpus_path> [corpus_path2] [...]
 
     Processes some number of text files or json tweet corpuses
-    into usable models. These will be output at model/<name>.model
+    into usable models. These will be output at model/<corpus_name>.model
   STR
 
   def self.consume(pathes)
@@ -97,10 +97,10 @@ STR
   end
 
   HELP.consume_all = <<-STR
-    Usage: ebooks consume-all <name> <corpus_path> [corpus_path2] [...]
+    Usage: ebooks consume-all <model_name> <corpus_path> [corpus_path2] [...]
 
     Processes some number of text files or json tweet corpuses
-    into one usable model. It will be output at model/<name>.model
+    into one usable model. It will be output at model/<model_name>.model
   STR
 
   def self.consume_all(name, paths)
