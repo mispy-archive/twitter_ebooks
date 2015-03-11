@@ -118,7 +118,7 @@ module Ebooks
           tweet[text_col]
         end
       else
-        log "Reading plaintext corpus from #{path}"
+        log "Reading plaintext corpus from #{path} (if this is a json or csv file, please rename the file with an extension and reconsume)"
         lines = content.split("\n")
       end
 
