@@ -93,7 +93,7 @@ The underlying streaming and REST clients from the [twitter gem](https://github.
 
 ## Archiving accounts
 
-twitter\_ebooks comes with a syncing tool to download and then incrementally update a local json archive of a user's tweets.
+twitter\_ebooks comes with a syncing tool to download and then incrementally update a local json archive of a user's tweets (in this case, my good friend @0xabad1dea):
 
 ``` zsh
 ➜  ebooks archive 0xabad1dea corpus/0xabad1dea.json
