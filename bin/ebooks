@@ -114,6 +114,52 @@ STR
     log "Corpuses consumed to #{outpath}"
   end
 
+  HELP.jsonify = <<-STR
+    Usage: ebooks jsonify <tweets.csv> [tweets.csv2] [...]
+
+    Takes a csv twitter archive and converts it to json.
+  STR
+
+  def self.jsonify(paths)
+    if paths.empty?
+      log usage
+      exit
+    end
+
+    paths.each do |path|
+      name = File.basename(path).split('.')[0]
+      new_path = name + ".json"
+
+      tweets = []
+      id = nil
+      if path.split('.')[-1] == "csv" #from twitter archive
+        csv_archive = CSV.read(path, :headers=>:first_row)
+        tweets = csv_archive.map do |tweet|
+          { text: tweet['text'], id: tweet['tweet_id'] }
+        end
+      else
+        File.read(path).split("\n").each do |l|
+          if l.start_with?('# ')
+            id = l.split('# ')[-1]
+          else
+            tweet = { text: l }
+            if id
+              tweet[:id] = id
+              id = nil
+            end
+            tweets << tweet
+          end
+        end
+      end
+
+      File.open(new_path, 'w') do |f|
+        log "Writing #{tweets.length} tweets to #{new_path}"
+        f.write(JSON.pretty_generate(tweets))
+      end
+    end
+  end
+
+
   HELP.gen = <<-STR
     Usage: ebooks gen <model_path> [input]
 
