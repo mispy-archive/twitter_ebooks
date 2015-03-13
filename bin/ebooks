@@ -3,6 +3,7 @@
 
 require 'twitter_ebooks'
 require 'ostruct'
+require 'fileutils'
 
 module Ebooks::Util
   def pretty_exception(e)
