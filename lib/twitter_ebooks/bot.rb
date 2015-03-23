@@ -144,6 +144,8 @@ module Ebooks
     attr_accessor :access_token
     # @return [String] OAuth access secret from `ebooks auth`
     attr_accessor :access_token_secret
+    # @return [Twitter::User] Twitter user object of bot
+    attr_accessor :user
     # @return [String] Twitter username of bot
     attr_accessor :username
     # @return [Array<String>] list of usernames to block on contact
@@ -247,31 +249,18 @@ module Ebooks
     # Receive an event from the twitter stream
     # @param ev [Object] Twitter streaming event
     def receive_event(ev)
-      if ev.is_a? Array # Initial array sent on first connection
+      case ev
+      when Array # Initial array sent on first connection
         log "Online!"
+        fire(:connect, ev)
         return
-      end
-
-      if ev.is_a? Twitter::DirectMessage
-        return if ev.sender.screen_name.downcase == @username.downcase # Don't reply to self
+      when Twitter::DirectMessage
+        return if ev.sender.id == @user.id # Don't reply to self
         log "DM from @#{ev.sender.screen_name}: #{ev.text}"
         fire(:message, ev)
-
-      elsif ev.respond_to?(:name)
-        if ev.name == :follow
-          return if ev.source.screen_name.downcase == @username.downcase
-          log "Followed by #{ev.source.screen_name}"
-          fire(:follow, ev.source)
-
-        elsif ev.name == :favorite || ev.name == :unfavorite
-          return if ev.source.screen_name.downcase == @username.downcase # Ignore our own favorites
-          log "@#{ev.source.screen_name} #{ev.name.to_s}d: #{ev.target_object.text}"
-          fire(ev.name, ev.source, ev.target_object)
-        end
-
-      elsif ev.is_a? Twitter::Tweet
+      when Twitter::Tweet
         return unless ev.text # If it's not a text-containing tweet, ignore it
-        return if ev.user.screen_name.downcase == @username.downcase # Ignore our own tweets
+        return if ev.user.id == @user.id # Ignore our own tweets
 
         meta = meta(ev)
 
@@ -295,13 +284,32 @@ module Ebooks
         else
           fire(:timeline, ev)
         end
-
-      elsif ev.is_a?(Twitter::Streaming::DeletedTweet) ||
-            ev.is_a?(Twitter::Streaming::Event)
-        # pass
+      when Twitter::Streaming::Event
+        case ev.name
+        when :follow
+          return if ev.source.id == @user.id
+          log "Followed by #{ev.source.screen_name}"
+          fire(:follow, ev.source)
+        when :favorite, :unfavorite
+          return if ev.source.id == @user.id # Ignore our own favorites
+          log "@#{ev.source.screen_name} #{ev.name.to_s}d: #{ev.target_object.text}"
+          fire(ev.name, ev.source, ev.target_object)
+        when :user_update
+          update_myself ev.source
+        end
+      when Twitter::Streaming::DeletedTweet
+        # Pass
       else
         log ev
       end
+    end
+
+    # Updates @user and calls on_user_update.
+    def update_myself(new_me = twitter.user)
+      @user = new_me if @user.nil? || new_me.id == @user.id
+      @username = user.screen_name
+      log 'User information updated'
+      fire(:user_update)
     end
 
     # Configures client and fires startup event
@@ -323,12 +331,12 @@ module Ebooks
         exit 1
       end
 
-      real_name = twitter.user.screen_name
-
-      if real_name != @username
-        log "connected to @#{real_name}-- please update config to match Twitter account name"
-        @username = real_name
-      end
+      # Save old name
+      old_name = username
+      # Load user object and actual username
+      update_myself
+      # Warn about mismatches unless it was clearly intentional
+      log "warning: bot expected to be @#{old_name} but connected to @#{username}" unless username == old_name || old_name.empty?
 
       fire(:startup)
     end
