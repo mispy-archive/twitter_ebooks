@@ -25,6 +25,7 @@ Usage:
      ebooks auth
      ebooks consume <corpus_path> [corpus_path2] [...]
      ebooks consume-all <model_name> <corpus_path> [corpus_path2] [...]
+     ebooks append <model_name> <corpus_path>
      ebooks gen <model_path> [input]
      ebooks archive <username> [path]
      ebooks tweet <model_path> <botname>
@@ -115,6 +116,24 @@ STR
     Ebooks::Model.consume_all(paths).save(outpath)
     log "Corpuses consumed to #{outpath}"
   end
+
+  HELP.append = <<-STR
+    Usage: ebooks append <model_name> <corpus_path>
+
+    Process then append the provided corpus to the model 
+    instead of overwriting.
+  STR
+
+  def self.append(name, path)
+    if !name || !path
+      help :append
+      exit 1
+    end
+
+    Ebooks::Model.consume(path).append(File.join(APP_PATH,'model',"#{name}.model"))
+    log "Corpus appended to #{name}.model"
+  end
+ 
 
   HELP.jsonify = <<-STR
     Usage: ebooks jsonify <tweets.csv> [tweets.csv2] [...]
@@ -380,6 +399,7 @@ STR
     when "new" then new(args[1])
     when "consume" then consume(args[1..-1])
     when "consume-all" then consume_all(args[1], args[2..-1])
+    when "append" then append(args[1],args[2])
     when "gen" then gen(args[1], args[2..-1].join(' '))
     when "archive" then archive(args[1], args[2])
     when "tweet" then tweet(args[1], args[2])
