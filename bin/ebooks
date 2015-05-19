@@ -28,6 +28,7 @@ Usage:
      ebooks gen <model_path> [input]
      ebooks archive <username> [path]
      ebooks tweet <model_path> <botname>
+     ebooks version
 STR
 
   def self.help(command=nil)
@@ -275,6 +276,17 @@ STR
     require 'pry'; Ebooks.module_exec { pry }
   end
 
+  HELP.version = <<-STR
+    Usage: ebooks version
+
+    Shows you twitter_ebooks' version number.
+  STR
+  
+  def self.version
+    require File.expand_path('../../lib/twitter_ebooks/version', __FILE__)
+    log Ebooks::VERSION
+  end
+
   HELP.start = <<-STR
     Usage: ebooks s[tart] [botname]
 
@@ -378,6 +390,7 @@ STR
     when "start" then start(args[1])
     when "s" then start(args[1])
     when "help" then help(args[1])
+    when "version" then version
     else
       log "No such command '#{args[0]}'"
       help
