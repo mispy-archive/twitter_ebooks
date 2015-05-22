@@ -71,7 +71,6 @@ module Ebooks
           start = site[0]
 
           site[1].shuffle.each do |alt|
-            start, alt = site[0], site[1].sample
             verbatim << @sentences[alt[0]]
             suffix = @sentences[alt[0]][alt[1]..-1]
             potential = tikis[0..start+1] + suffix
