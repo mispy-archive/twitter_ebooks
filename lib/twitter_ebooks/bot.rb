@@ -305,9 +305,9 @@ module Ebooks
     end
 
     # Updates @user and calls on_user_update.
-    def update_myself(new_me = twitter.user)
+    def update_myself(new_me=twitter.user)
       @user = new_me if @user.nil? || new_me.id == @user.id
-      @username = user.screen_name
+      @username = @user.screen_name
       log 'User information updated'
       fire(:user_update)
     end
