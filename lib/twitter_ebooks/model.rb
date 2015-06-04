@@ -80,7 +80,13 @@ module Ebooks
     # @param token [String]
     # @return [Integer]
     def tikify(token)
-      @tikis[token] or (@tokens << token and @tikis[token] = @tokens.length-1)
+      if @tikis.has_key?(token) then
+        return @tikis[token]
+      else
+        (@tokens.length+1)%1000 == 0 and puts "#{@tokens.length+1} tokens"
+        @tokens << token 
+        return @tikis[token] = @tokens.length-1
+      end
     end
 
     # Convert a body of text into arrays of tikis
@@ -143,8 +149,8 @@ module Ebooks
         end
       end
 
-      text = statements.join("\n")
-      mention_text = mentions.join("\n")
+      text = statements.join("\n").encode('UTF-8', :invalid => :replace)
+      mention_text = mentions.join("\n").encode('UTF-8', :invalid => :replace)
 
       lines = nil; statements = nil; mentions = nil # Allow garbage collection
 
@@ -155,6 +161,7 @@ module Ebooks
 
       log "Ranking keywords"
       @keywords = NLP.keywords(text).top(200).map(&:to_s)
+      log "Top keywords: #{@keywords[0]} #{@keywords[1]} #{@keywords[2]}"
 
       self
     end
@@ -218,6 +225,7 @@ module Ebooks
       tweet = ""
 
       while (tikis = generator.generate(3, :bigrams)) do
+        log "Attempting to produce tweet try #{retries+1}/#{retry_limit}"
         next if tikis.length <= 3 && !responding
         break if valid_tweet?(tikis, limit)
 
@@ -226,6 +234,7 @@ module Ebooks
       end
 
       if verbatim?(tikis) && tikis.length > 3 # We made a verbatim tweet by accident
+        log "Attempting to produce unigram tweet try #{retries+1}/#{retry_limit}"
         while (tikis = generator.generate(3, :unigrams)) do
           break if valid_tweet?(tikis, limit) && !verbatim?(tikis)
 

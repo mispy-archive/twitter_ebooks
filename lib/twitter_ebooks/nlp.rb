@@ -1,6 +1,7 @@
 # encoding: utf-8
 require 'fast-stemmer'
 require 'highscore'
+require 'htmlentities'
 
 module Ebooks
   module NLP
@@ -42,7 +43,6 @@ module Ebooks
     # Lazily load HTML entity decoder
     # @return [HTMLEntities]
     def self.htmlentities
-      require 'htmlentities'
       @htmlentities ||= HTMLEntities.new
     end
 
