@@ -69,6 +69,35 @@ module Ebooks
       self
     end
 
+    # Append a generated model to existing model file instead of overwriting it
+    # @param path [String]
+    def append(path)
+      existing = File.file?(path)
+      if !existing
+        log "No existing model found at #{path}"
+        return
+      else
+        #read-in and deserialize existing model
+        props = Marshal.load(File.open(path,'rb') { |old| old.read })
+        old_tokens = props[:tokens]
+        old_sentences = props[:sentences]
+        old_mentions = props[:mentions]
+        old_keywords = props[:keywords]
+
+        #append existing properties to new ones and overwrite with new model
+        File.open(path, 'wb') do |f|
+          f.write(Marshal.dump({
+            tokens: @tokens.concat(old_tokens),
+            sentences: @sentences.concat(old_sentences),
+            mentions: @mentions.concat(old_mentions),
+            keywords: @keywords.concat(old_keywords)
+          }))
+        end
+      end
+      self
+    end
+     
+
     def initialize
       @tokens = []
 
