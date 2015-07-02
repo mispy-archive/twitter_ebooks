@@ -254,7 +254,6 @@ module Ebooks
       tweet = ""
 
       while (tikis = generator.generate(3, :bigrams)) do
-        log "Attempting to produce tweet try #{retries+1}/#{retry_limit}"
         next if tikis.length <= 3 && !responding
         break if valid_tweet?(tikis, limit)
 
@@ -263,7 +262,6 @@ module Ebooks
       end
 
       if verbatim?(tikis) && tikis.length > 3 # We made a verbatim tweet by accident
-        log "Attempting to produce unigram tweet try #{retries+1}/#{retry_limit}"
         while (tikis = generator.generate(3, :unigrams)) do
           break if valid_tweet?(tikis, limit) && !verbatim?(tikis)
 
