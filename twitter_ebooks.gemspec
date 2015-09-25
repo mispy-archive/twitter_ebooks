@@ -22,7 +22,7 @@ Gem::Specification.new do |gem|
   gem.add_development_dependency 'pry-byebug'
   gem.add_development_dependency 'yard'
 
-  gem.add_runtime_dependency 'twitter', '~> 5.15'
+  gem.add_runtime_dependency 'twitter', '= 5.14'
   gem.add_runtime_dependency 'rufus-scheduler'
   gem.add_runtime_dependency 'gingerice'
   gem.add_runtime_dependency 'htmlentities'
