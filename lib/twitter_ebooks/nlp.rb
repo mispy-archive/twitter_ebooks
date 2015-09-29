@@ -99,7 +99,7 @@ module Ebooks
         #set :vowels, 1                     # => default: 0 = not considered
         #set :consonants, 5                 # => default: 0 = not considered
         #set :ignore_case, true             # => default: false
-        set :word_pattern, /(?<!@)(?<=\s)[\w']+/           # => default: /\w+/
+        set :word_pattern, /(?<!@)(?<=\s)[\p{Word}']+/           # => default: /\w+/
         #set :stemming, true                # => default: false
       end
 
