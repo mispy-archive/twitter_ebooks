@@ -14,10 +14,10 @@ module Ebooks
     # to be using it all of the time
 
     # Lazily loads an array of stopwords
-    # Stopwords are common English words that should often be ignored
+    # Stopwords are common words that should often be ignored
     # @return [Array<String>]
     def self.stopwords
-      @stopwords ||= File.read(File.join(DATA_PATH, 'stopwords.txt')).split
+      @stopwords ||= File.exists?('stopwords.txt') ? File.read('stopwords.txt').split : []
     end
 
     # Lazily loads an array of known English nouns
