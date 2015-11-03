@@ -93,7 +93,9 @@ STR
       filename = File.basename(path)
       shortname = filename.split('.')[0..-2].join('.')
 
+      FileUtils.mkdir_p(File.join(APP_PATH, 'model'))
       outpath = File.join(APP_PATH, 'model', "#{shortname}.model")
+
       Ebooks::Model.consume(path).save(outpath)
       log "Corpus consumed to #{outpath}"
     end
@@ -120,7 +122,7 @@ STR
   HELP.append = <<-STR
     Usage: ebooks append <model_name> <corpus_path>
 
-    Process then append the provided corpus to the model 
+    Process then append the provided corpus to the model
     instead of overwriting.
   STR
 
@@ -133,7 +135,7 @@ STR
     Ebooks::Model.consume(path).append(File.join(APP_PATH,'model',"#{name}.model"))
     log "Corpus appended to #{name}.model"
   end
- 
+
 
   HELP.jsonify = <<-STR
     Usage: ebooks jsonify <tweets.csv> [tweets.csv2] [...]
@@ -300,7 +302,7 @@ STR
 
     Shows you twitter_ebooks' version number.
   STR
-  
+
   def self.version
     require File.expand_path('../../lib/twitter_ebooks/version', __FILE__)
     log Ebooks::VERSION
