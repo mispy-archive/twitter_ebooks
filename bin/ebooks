@@ -211,6 +211,11 @@ STR
     Output defaults to corpus/<username>.json
     Due to API limitations, this can only receive up to ~3000 tweets
     into the past.
+
+    The first time you run archive, you will need to enter the auth
+    details of some account to use for accessing the API. This info
+    will then be stored in ~/.ebooksrc for later use, and can be
+    modified there if needed.
   STR
 
   def self.archive(username, outpath=nil)
