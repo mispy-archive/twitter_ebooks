@@ -51,6 +51,11 @@ class MyBot < Ebooks::Bot
     # Follow user who just favorited bot's tweet
     # follow(user.screen_name)
   end
+
+  def on_retweet(tweet)
+    # Follow user who just retweeted bot's tweet
+    # follow(tweet.user.screen_name)
+  end
 end
 
 # Make a MyBot and attach it to an account
