@@ -21,7 +21,7 @@ Note that 3.0 is not backwards compatible with 2.x, so upgrade carefully! In par
 
 ## Installation
 
-Requires Ruby 2.0+
+Requires Ruby 2.1+. Ruby 2.3+ is recommended.
 
 ```bash
 gem install twitter_ebooks
