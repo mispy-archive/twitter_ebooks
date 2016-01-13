@@ -255,8 +255,7 @@ module Ebooks
 
       while (tikis = generator.generate(3, :bigrams)) do
         log "Attempting to produce tweet try #{retries+1}/#{retry_limit}"
-        next if tikis.length <= 3 && !responding
-        break if valid_tweet?(tikis, limit)
+        break if (tikis.length > 3 || responding) && valid_tweet?(tikis, limit)
 
         retries += 1
         break if retries >= retry_limit
