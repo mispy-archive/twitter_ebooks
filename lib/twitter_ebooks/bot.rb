@@ -2,6 +2,14 @@
 require 'twitter'
 require 'rufus/scheduler'
 
+# Monkeypatch hack to fix upstream dependency issue
+# https://github.com/sferik/twitter/issues/709
+class HTTP::URI
+  def port
+    443 if self.https?
+  end
+end
+
 module Ebooks
   class ConfigurationError < Exception
   end
@@ -267,8 +275,6 @@ module Ebooks
         if blacklisted?(ev.user.screen_name)
           log "Blocking blacklisted user @#{ev.user.screen_name}"
           @twitter.block(ev.user.screen_name)
-          # we don't want to reply to blacklisted users, so return
-          return
         end
 
         # Avoid responding to duplicate tweets
