@@ -96,7 +96,7 @@ module Ebooks
       end
       self
     end
-     
+
 
     def initialize
       @tokens = []
@@ -113,7 +113,7 @@ module Ebooks
         return @tikis[token]
       else
         (@tokens.length+1)%1000 == 0 and puts "#{@tokens.length+1} tokens"
-        @tokens << token 
+        @tokens << token
         return @tikis[token] = @tokens.length-1
       end
     end

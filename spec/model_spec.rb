@@ -36,7 +36,7 @@ describe Ebooks::Model do
     report2 = MemoryUsage.report do
       model = Ebooks::Model.load(file.path)
     end
-    expect(report2.total_memsize).to be < 3000000
+    expect(report2.total_memsize).to be < 4000000
 
     expect(model.tokens[0]).to be_a String
     expect(model.sentences[0][0]).to be_a Fixnum
