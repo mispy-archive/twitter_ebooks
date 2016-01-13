@@ -89,7 +89,11 @@ module Ebooks
           break if variant
         end
 
-        tikis = variant if variant
+        # If we failed to produce a variation from any alternative, there
+        # is no use running additional passes-- they'll have the same result.
+        break if variant.nil?
+
+        tikis = variant
       end
 
       tikis
