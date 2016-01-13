@@ -267,6 +267,8 @@ module Ebooks
         if blacklisted?(ev.user.screen_name)
           log "Blocking blacklisted user @#{ev.user.screen_name}"
           @twitter.block(ev.user.screen_name)
+          # we don't want to reply to blacklisted users, so return
+          return
         end
 
         # Avoid responding to duplicate tweets
