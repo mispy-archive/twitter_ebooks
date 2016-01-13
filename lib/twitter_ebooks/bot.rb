@@ -270,6 +270,12 @@ module Ebooks
         return unless ev.text # If it's not a text-containing tweet, ignore it
         return if ev.user.id == @user.id # Ignore our own tweets
 
+        if ev.retweet? && ev.retweeted_tweet.user.id == @user.id
+          # Someone retweeted our tweet!
+          fire(:retweet, ev)
+          return
+        end
+
         meta = meta(ev)
 
         if blacklisted?(ev.user.screen_name)
