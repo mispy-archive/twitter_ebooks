@@ -50,7 +50,8 @@ module Ebooks
       @client = client || make_client
 
       if File.exists?(@path)
-        @tweets = JSON.parse(File.read(@path, :encoding => 'utf-8'), symbolize_names: true)
+        @filetext = File.read(@path, :encoding => 'utf-8')
+        @tweets = JSON.parse(@filetext, symbolize_names: true)
         log "Currently #{@tweets.length} tweets for #{@username}"
       else
         @tweets.nil?
@@ -59,6 +60,21 @@ module Ebooks
     end
 
     def sync
+      # We use this structure to ensure that
+      # a) if there's an issue opening the file, we error out before download
+      # b) if there's an issue during download we restore the original
+      File.open(@path, 'w') do |file|
+        begin
+          sync_to(file)
+        rescue Exception
+          file.seek(0)
+          file.write(@filetext)
+          raise
+        end
+      end
+    end
+
+    def sync_to(file)
       retries = 0
       tweets = []
       max_id = nil
@@ -93,9 +109,7 @@ module Ebooks
         @tweets = tweets.map(&:attrs).each { |tw|
           tw.delete(:entities)
         } + @tweets
-        File.open(@path, 'w') do |f|
-          f.write(JSON.pretty_generate(@tweets))
-        end
+        file.write(JSON.pretty_generate(@tweets))
       end
     end
   end
