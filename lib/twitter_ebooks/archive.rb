@@ -109,8 +109,8 @@ module Ebooks
         @tweets = tweets.map(&:attrs).each { |tw|
           tw.delete(:entities)
         } + @tweets
-        file.write(JSON.pretty_generate(@tweets))
       end
+      file.write(JSON.pretty_generate(@tweets))
     end
   end
 end
