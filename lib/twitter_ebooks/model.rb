@@ -183,7 +183,7 @@ module Ebooks
 
       lines = nil; statements = nil; mentions = nil # Allow garbage collection
 
-      log "Tokenizing #{text.count('\n')} statements and #{mention_text.count('\n')} mentions"
+      log "Tokenizing #{text.count("\n")} statements and #{mention_text.count("\n")} mentions"
 
       @sentences = mass_tikify(text)
       @mentions = mass_tikify(mention_text)
@@ -254,7 +254,7 @@ module Ebooks
       tweet = ""
 
       while (tikis = generator.generate(3, :bigrams)) do
-        log "Attempting to produce tweet try #{retries+1}/#{retry_limit}"
+        #log "Attempting to produce tweet try #{retries+1}/#{retry_limit}"
         break if (tikis.length > 3 || responding) && valid_tweet?(tikis, limit)
 
         retries += 1
@@ -262,7 +262,7 @@ module Ebooks
       end
 
       if verbatim?(tikis) && tikis.length > 3 # We made a verbatim tweet by accident
-        log "Attempting to produce unigram tweet try #{retries+1}/#{retry_limit}"
+        #log "Attempting to produce unigram tweet try #{retries+1}/#{retry_limit}"
         while (tikis = generator.generate(3, :unigrams)) do
           break if valid_tweet?(tikis, limit) && !verbatim?(tikis)
 

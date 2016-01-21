@@ -70,5 +70,19 @@ describe Ebooks::Model do
 
       file.unlink
     end
+
+    it 'handles strange unicode edge-cases' do
+      file = Tempfile.new('unicode')
+      file.write("💞\n💞")
+      file.close
+
+      model = Ebooks::Model.consume(file.path)
+      expect(model.mentions.count).to eq 0
+      expect(model.sentences.count).to eq 2
+
+      file.unlink
+
+      p model.make_statement
+    end
   end
 end
