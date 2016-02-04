@@ -14,7 +14,7 @@ module Ebooks
     end
 
     def initialize(sentences)
-      @sentences = sentences
+      @sentences = sentences.reject { |s| s.empty? }
       @unigrams = {}
       @bigrams = {}
 
