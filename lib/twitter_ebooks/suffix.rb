@@ -1,12 +1,15 @@
 # encoding: utf-8
 
 module Ebooks
-  # This generator uses data identical to a markov model, but
+  # This generator uses data similar to a Markov model, but
   # instead of making a chain by looking up bigrams it uses the
-  # positions to randomly replace suffixes in one sentence with
-  # matching suffixes in another
+  # positions to randomly replace token array suffixes in one sentence
+  # with matching suffixes in another
   class SuffixGenerator
     # Build a generator from a corpus of tikified sentences
+    # "tikis" are token indexes-- a way of representing words
+    # and punctuation as their integer position in a big array
+    # of such tokens
     # @param sentences [Array<Array<Integer>>]
     # @return [SuffixGenerator]
     def self.build(sentences)
@@ -44,7 +47,6 @@ module Ebooks
 
       self
     end
-
 
     # Generate a recombined sequence of tikis
     # @param passes [Integer] number of times to recombine
