@@ -37,12 +37,10 @@ module Ebooks
       usertweets = @tweets.select { |t| t.user.screen_name.downcase == username.downcase }
 
       if usertweets.length > 2
-        if (usertweets[-1].created_at - usertweets[-3].created_at) < 10
+        if username.include?('ebooks') || (usertweets[-1].created_at - usertweets[-3].created_at) < 12
           return true
         end
       end
-
-      username.include?("ebooks")
     end
 
     # Figure out whether to keep this user in the reply prefix
