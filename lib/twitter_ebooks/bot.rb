@@ -375,7 +375,7 @@ module Ebooks
     # Delay an action for a variable period of time
     # @param range [Range, Integer] range of seconds to choose for delay
     def delay(range=@delay_range, &b)
-      time = range.to_a.sample unless range.is_a? Integer
+      time = rand(range) unless range.is_a? Integer
       sleep time
       b.call
     end
