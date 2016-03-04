@@ -28,6 +28,7 @@ Usage:
      ebooks append <model_name> <corpus_path>
      ebooks gen <model_path> [input]
      ebooks archive <username> [path]
+     ebooks sync <botname> [username]
      ebooks tweet <model_path> <botname>
      ebooks version
 STR
@@ -227,6 +228,25 @@ STR
     Ebooks::Archive.new(username, outpath).sync
   end
 
+    HELP.sync = <<-STR
+    Usage: ebooks sync <botname> <username>
+
+    Copies and flips <username>'s avatar and cover photo, uploading them to <botname>'s profile.
+
+    Stores saved avatar's and covers in image/.
+
+  STR
+
+  def self.sync(botname, username)
+    if botname.nil?
+      help :sync
+      exit 1
+    end
+
+    load File.join(APP_PATH, 'bots.rb')
+    Ebooks::Sync::run(botname, username)
+  end
+
   HELP.tweet = <<-STR
     Usage: ebooks tweet <model_path> <botname>
 
@@ -409,6 +429,7 @@ STR
     when "append" then append(args[1],args[2])
     when "gen" then gen(args[1], args[2..-1].join(' '))
     when "archive" then archive(args[1], args[2])
+    when "sync" then sync(args[1], args[2])
     when "tweet" then tweet(args[1], args[2])
     when "jsonify" then jsonify(args[1..-1])
     when "auth" then auth
