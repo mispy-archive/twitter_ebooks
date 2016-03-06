@@ -304,10 +304,15 @@ STR
     end
 
     access_token = request_token.get_access_token(oauth_verifier: pin)
+    token_username = access_token.params['screen_name']
 
-    log "Account authorized successfully. Make sure to put these in your bots.rb!\n" +
-         "  access token: #{access_token.token}\n" +
-         "  access token secret: #{access_token.secret}"
+    if fill_access_token token_username, access_token.token, access_token.secret
+      log "Please check that @#{token_username}'s details have been updated in bots.rb correctly."
+    else
+      log "@#{token_username} authorized successfully. Make sure to put these in your bots.rb!"
+    end
+    log "  access token: #{access_token.token}\n" +
+        "  access token secret: #{access_token.secret}"
   end
 
   HELP.console = <<-STR
@@ -414,6 +419,116 @@ STR
     if Ebooks::Bot.all.empty?
       puts "Couldn't find any bots! Please make sure bots.rb instantiates at least one bot."
     end
+  end
+
+  def self.fill_access_token(username, access_token, access_token_secret)
+    # This keeps track of what we're doing.
+    stage = :looking_for_bot
+    # This is used to hold onto the user's bot variable later.
+    bot_variable = ''
+    # This holds the last bot class we found. Only used if normal bot detection fails.
+    bot_class = ''
+    # This will be passed out to File.write later.
+    output = ''
+    # This keeps track of whether we can tell the user we succeeded or not.
+    replaced_token = false
+    replaced_secret = false
+    # Process each line of bots.rb
+    File.foreach 'bots.rb' do |line|
+      # Strip out all whitespace to make matching easier.
+      stripped_line = line.gsub(/\s+/, '')
+      # Drop comments if they exist.
+      stripped_line.gsub!(/#[^"']*$/, '')
+      case stage
+      when :looking_for_bot
+        # Matches default bot declarations, with an optional # comment at the end or a @ before their name.
+        if match_data = stripped_line.match(/^\w+\.new\(?(["'])(@?)#{Regexp.escape username}\1\)?do\|(\w+)\|$/)
+          # Store the variable they're using for their bot.
+          bot_variable = match_data[3]
+          # Help them out if they put a @ in front of their bot's username
+          if match_data[2] == '@'
+            # It's safe to do another regex here because we don't use the last one's $ variables anymore.
+            line = line.gsub(/(["'])@(#{Regexp.escape username})\1/, "\\1\\2\\1")
+          end
+          # Switch to next stage
+          stage = :replacing_access_tokens
+        end
+        # Add current line to output.
+        output += line
+      when :replacing_access_tokens
+        # Find out if we're looking at an access_token_line
+        case stripped_line
+        # Empty access token line
+        when /^#{Regexp.escape bot_variable}\.access_token=(["'])\1$/
+          # Replace pairs of quotes containing only spaces with the same type of quote containing token.
+          output += line.gsub(/(['"])\s*\1/, "\\1#{access_token}\\1")
+          replaced_token = true
+        # Empty access token secret line
+        when /^#{Regexp.escape bot_variable}\.access_token_secret=(["'])\1$/
+          # Replace pairs of quotes containing only spaces with the same type of quote containing token secret.
+          output += line.gsub(/(['"])\s*\1/, "\\1#{access_token_secret}\\1")
+          replaced_secret = true
+        # Another bot definition
+        when /^\w+\.new\(?["'](@?)\w*["']\)?do\|(\w+)\|$/
+          # This file is either nonstandard or something weird happened. Have the user manually edit it.
+          return false
+        # End of bot definition
+        when /^end$/
+          # Remember that we saw an end.
+          stage = :done
+          output += line
+        # Other lines
+        else
+          output += line
+        end
+      when :done
+        # We're outside of bot definition now, so just copy the rest.
+        output += line
+      end
+
+      # Also try to detect user's last defined bot class
+      if match_data = stripped_line.match(/class(\w+)<Ebooks::Bot/)
+        bot_class = match_data[1]
+      end
+    end
+
+    # Were we unable to find our bot at all?
+    if stage == :looking_for_bot
+      # We can't do anything if we didn't detect a class definiton either.
+      return false if bot_class.empty?
+
+      # Generate a new bot definition.
+      output += <<-PuddiDOC.gsub(/^ {6}/, '')
+
+      # Make a #{bot_class} and attach it to an account
+      #{bot_class}.new('#{username}') do |bot|
+        bot.access_token = '#{access_token}' # Token connecting the app to this account
+        bot.access_token_secret = '#{access_token_secret}' # Secret connecting the app to this account
+      end
+      PuddiDOC
+
+      # Well, now we're pretty much done.
+      stage = :done
+      replaced_token = true
+      replaced_secret = true
+    end
+
+    # Don't do anything if stage isn't done, because it means something weird happened or the user's bots.rb is non-standard.
+    return false unless stage == :done
+
+    # Is there any point in replacing file?
+    if replaced_token || replaced_secret
+      # Replace it.
+      File.open 'bots.rb', 'w' do |file|
+        file.write output
+      end
+    end
+
+    # Did we replace both lines successfully?
+    replaced_token && replaced_secret
+  rescue
+    # The file is probably unavailable for reading, so user will have to manually input.
+    false
   end
 
   def self.command(args)
