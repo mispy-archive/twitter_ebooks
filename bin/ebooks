@@ -264,6 +264,10 @@ STR
     model = Ebooks::Model.load(modelpath)
     statement = model.make_statement
     bot = Ebooks::Bot.get(botname)
+    if bot.nil?
+      log "No such bot configured in bots.rb: #{botname}"
+      exit 1
+    end
     bot.configure
     bot.tweet(statement)
   end
