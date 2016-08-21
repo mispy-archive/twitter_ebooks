@@ -168,7 +168,7 @@ module Ebooks
     # @param username [String]
     # @return [Ebooks::Bot]
     def self.get(username)
-      all.find { |bot| bot.username == username }
+      all.find { |bot| bot.username.downcase == username.downcase }
     end
 
     # Logs info to stdout in the context of this bot
