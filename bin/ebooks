@@ -306,8 +306,8 @@ STR
     access_token = request_token.get_access_token(oauth_verifier: pin)
 
     log "Account authorized successfully. Make sure to put these in your bots.rb!\n" +
-         "  access token: #{access_token.token}\n" +
-         "  access token secret: #{access_token.secret}"
+         "  bot.access_token = \"#{access_token.token}\"\n" +
+         "  bot.access_token_secret = \"#{access_token.secret}\""
   end
 
   HELP.console = <<-STR
