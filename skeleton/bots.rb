@@ -23,7 +23,9 @@ class MyBot < Ebooks::Bot
       # Tweet something every 24 hours
       # See https://github.com/jmettraux/rufus-scheduler
       # tweet("hi")
-      # pictweet("hi", "cuteselfie.jpg")
+      #
+      # Tweet two pictures every 24 hours
+      # pic_tweet("hey", ["cuteselfie.jpg", "http://supercute.com/kitties.png"])
     end
   end
 
@@ -35,11 +37,25 @@ class MyBot < Ebooks::Bot
   def on_follow(user)
     # Follow a user back
     # follow(user.screen_name)
+    #
+    # Generate a picture for whoever just followed you
+    # pic_tweet("@#{user.screen_name} I made you this.", ['.jpg']) do |filename|
+    #   picture = File.new(filename)
+    #   YourOwn::Library.generate_picture(picture)
+    #   picture.close
+    # end
   end
 
   def on_mention(tweet)
     # Reply to a mention
     # reply(tweet, "oh hullo")
+    #
+    # Edit a picture tweeted at you
+    # pic_reply?(tweet, "'sup", meta(tweet).media_uris) do |filename|
+    #   picture = File.new(filename)
+    #   YourOwn::Library.add_sunglasses(picture)
+    #   picture.close
+    # end
   end
 
   def on_timeline(tweet)

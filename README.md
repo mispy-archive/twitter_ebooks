@@ -155,3 +155,58 @@ end
 ## Bot niceness
 
 twitter_ebooks will drop bystanders from mentions for you and avoid infinite bot conversations, but it won't prevent you from doing a lot of other spammy things. Make sure your bot is a good and polite citizen!
+
+## Images
+
+twitter_ebooks now comes with a set of methods that can handle many different needs image-focused bots might have.
+
+``` ruby
+# Tweet one image located in the same directory as bots.rb
+pic_tweet('This is me-ow!', 'adorable_pink_kittehgirl.jpg')
+# Tweet multiple images (method won't raise an exception unless all pictures fail)
+pic_tweet('My pets', ['pics/octopus.jpg', 'pics/kitteh.png', 'pics/panda.jpeg'])
+# Tweet online images
+pic_tweet('It\'s onliiine~!', 'https://avatars3.githubusercontent.com/u/9897819')
+pic_tweet('', ['cutemisp.png', 'https://avatars1.githubusercontent.com/u/3055384'])
+# Provide tweet parameters
+pic_tweet('#nsfw', 'nakie_kittehgirl.jpg', possibly_sensitive: true)
+# Provide upload parameters (just to future-proof - none seem to be supported)
+pic_tweet('Uhh', 'special_image.png', {}, {some_option: true})
+# Reply to a tweet (doesn't work on direct messages)
+pic_reply(tweet, 'I heard you like kittens.', 'fatcat.jpg')
+# Be lazy
+pictweet('Typing a underscore is way too hard', 'tired.jpg')
+picreply tweet, 'Typing parentheses is too hard as well!', 'lazy.png'
+# Re-upload and echo images from a tweet while replying to it
+picreply(tweet, 'I can haz copy?', meta(tweet).media_uris)
+picreply(tweet, 'I can haz thumbnail?', meta(tweet).media_uris('thumb'))
+# Stop plagiarizing and actually edit files before you upload them
+picreply(tweet, '\'sup') do |filename|
+  # Yes, leaving out your images parameter for replies automatically
+  # fetches your tweet's 'large' size images for you!
+  ImagesFor::Dummies.add_sunglasses filename
+end
+# Edit a local image
+pictweet(tweet, 'Meanies!', ['me_sleeping.jpg', 'cutie_sleeping.png']) do |filename|
+  # Don't worry, you're working with a copy of your image here!
+  # Your original is completely unharmed!
+  ImagesFor::Kittehgirls.draw_on_face filename
+end
+# Generate an empty file so you can create an image from scratch
+pictweet(tweet, 'I can draw!', '.jpg') do |filename|
+  begin
+    file = File.new filename
+    ImageWizardry::Create.make_picture file, options_hash
+  ensure
+    # Make sure you close any files you open in this block,
+    # even if you have to do something ugly like this!
+    file.close if file && !file.closed?
+  end
+end
+# Realize your bot crashes every time it tries to pic_reply to a tweet with no images
+picreply?(tweet, 'I only reply to tweets with pictures!') do |filename|
+  File.open filename do |file|
+    ImageWizardry::Effect.fluffy_and_cute file
+  end
+end
+```

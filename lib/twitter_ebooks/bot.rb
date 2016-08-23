@@ -1,6 +1,7 @@
 # encoding: utf-8
 require 'twitter'
 require 'rufus/scheduler'
+require_relative 'tweetpic.rb'
 
 # Monkeypatch hack to fix upstream dependency issue
 # https://github.com/sferik/twitter/issues/709
@@ -468,14 +469,6 @@ module Ebooks
     # @return [Rufus::Scheduler]
     def scheduler
       @scheduler ||= Rufus::Scheduler.new
-    end
-
-    # Tweet some text with an image
-    # @param txt [String]
-    # @param pic [String] filename
-    def pictweet(txt, pic, *args)
-      log "Tweeting #{txt.inspect} - #{pic} #{args}"
-      twitter.update_with_media(txt, File.new(pic), *args)
     end
   end
 end
