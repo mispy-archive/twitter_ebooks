@@ -1,6 +1,8 @@
 # encoding: utf-8
 require 'twitter'
 require 'rufus/scheduler'
+require 'ostruct'
+require_relative 'configfile.rb'
 
 # Monkeypatch hack to fix upstream dependency issue
 # https://github.com/sferik/twitter/issues/709
@@ -189,6 +191,8 @@ module Ebooks
       @username = username
       @delay_range ||= 1..6
       configure
+
+      config(username)
 
       b.call(self) unless b.nil?
       Bot.all << self
