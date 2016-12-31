@@ -1,2 +1,4 @@
 # Require \n style line endings
 * text eol=lf
+# Make sure the spurious \r\n doesn't get stripped in these
+*.model binary
