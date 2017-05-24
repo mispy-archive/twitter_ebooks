@@ -131,6 +131,8 @@ Notably, this works with both json tweet archives and plaintext files (based on 
 
 Text files use newlines and full stops to seperate statements.
 
+You can also consume multiple archives / plaintext files into a single model using `consume-all`.
+
 Once you have a model, the primary use is to produce statements and related responses to input, using a pseudo-Markov generator:
 
 ``` ruby
