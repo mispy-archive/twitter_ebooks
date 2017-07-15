@@ -25,7 +25,7 @@ Gem::Specification.new do |gem|
   gem.add_development_dependency 'pry-byebug', '~> 3.4'
   gem.add_development_dependency 'yard', '~> 0.9'
 
-  gem.add_runtime_dependency 'twitter', '~> 6.0'
+  gem.add_runtime_dependency 'twitter', '~> 6.1'
   gem.add_runtime_dependency 'rufus-scheduler', '~> 3.4'
   gem.add_runtime_dependency 'gingerice', '~> 1.2'
   gem.add_runtime_dependency 'htmlentities', '~> 4.3'
@@ -34,5 +34,5 @@ Gem::Specification.new do |gem|
   gem.add_runtime_dependency 'highscore', '~> 1.2'
   gem.add_runtime_dependency 'pry', '~> 0'
   gem.add_runtime_dependency 'oauth', '~> 0.5'
-  gem.add_runtime_dependency 'mini_magick', '~> 4.6'
+  gem.add_runtime_dependency 'mini_magick', '~> 4.8'
 end
