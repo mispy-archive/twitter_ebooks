@@ -82,6 +82,7 @@ module Ebooks
       opts = {
         count: 200,
         #include_rts: false,
+        tweet_mode: "extended",
         trim_user: true
       }
 
@@ -107,6 +108,7 @@ module Ebooks
       else
         @tweets ||= []
         @tweets = tweets.map(&:attrs).each { |tw|
+          tw[:text] = tw[:full_text]
           tw.delete(:entities)
         } + @tweets
       end
