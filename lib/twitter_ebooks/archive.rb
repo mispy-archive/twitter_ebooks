@@ -82,6 +82,7 @@ module Ebooks
       opts = {
         count: 200,
         #include_rts: false,
+        tweet_mode: "extended",
         trim_user: true
       }
 
@@ -92,8 +93,8 @@ module Ebooks
         begin
           new = @client.user_timeline(@username, opts)
         rescue Twitter::Error::TooManyRequests
-          log "Rate limit exceeded. Waiting for 5 mins before retry."
-          sleep 60*5
+          log "Rate limit exceeded. Waiting for 15 mins before retry."
+          sleep 60*15
           retry
         end
         break if new.length <= 1
@@ -107,6 +108,7 @@ module Ebooks
       else
         @tweets ||= []
         @tweets = tweets.map(&:attrs).each { |tw|
+          tw[:text] = tw[:full_text]
           tw.delete(:entities)
         } + @tweets
       end
