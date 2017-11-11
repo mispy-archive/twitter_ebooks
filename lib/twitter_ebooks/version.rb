@@ -1,3 +1,3 @@
 module Ebooks
-  VERSION = "3.1.6"
+  VERSION = "3.2.0"
 end
