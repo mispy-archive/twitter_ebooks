@@ -246,7 +246,7 @@ module Ebooks
     # @param generator [SuffixGenerator, nil]
     # @param retry_limit [Integer] how many times to retry on invalid tweet
     # @return [String]
-    def make_statement(limit=140, generator=nil, retry_limit=10)
+    def make_statement(limit=280, generator=nil, retry_limit=10)
       responding = !generator.nil?
       generator ||= SuffixGenerator.build(@sentences)
 
@@ -316,7 +316,7 @@ module Ebooks
     # @param limit [Integer] characters available for response
     # @param sentences [Array<Array<Integer>>]
     # @return [String]
-    def make_response(input, limit=140, sentences=@mentions)
+    def make_response(input, limit=280, sentences=@mentions)
       # Prefer mentions
       relevant, slightly_relevant = find_relevant(sentences, input)
 
