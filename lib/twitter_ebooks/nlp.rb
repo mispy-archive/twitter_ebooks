@@ -3,7 +3,6 @@ require 'fast-stemmer'
 require 'highscore'
 require 'htmlentities'
 
-require 'pry'
 module Ebooks
   module NLP
     # We deliberately limit our punctuation handling to stuff we can do consistently
@@ -88,7 +87,7 @@ module Ebooks
     # @return [Highscore::Keywords]
     def self.keywords(text)
       # Preprocess to remove stopwords (highscore's blacklist is v. slow)
-			text = NLP.tokenize(text).reject { |t| stopword?(t) || t.start_with?('http') }.join(' ')
+      text = NLP.tokenize(text).reject { |t| stopword?(t) || t.start_with?('http') }.join(' ')
 
       text = Highscore::Content.new(text)
 
