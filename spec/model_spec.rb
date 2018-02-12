@@ -10,13 +10,13 @@ describe Ebooks::Model do
 
     it "generates a tweet" do
       s = @model.make_statement
-      expect(s.length).to be <= 140
+      expect(s.length).to be <= 280
       puts s
     end
 
     it "generates an appropriate response" do
       s = @model.make_response("hi")
-      expect(s.length).to be <= 140
+      expect(s.length).to be <= 280
       expect(s.downcase).to include("hi")
       puts s
     end

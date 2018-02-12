@@ -142,7 +142,11 @@ module Ebooks
       if path.split('.')[-1] == "json"
         log "Reading json corpus from #{path}"
         lines = JSON.parse(content).map do |tweet|
-          tweet['text']
+          if tweet.key?('full_text')
+            tweet['full_text']
+          else
+            tweet['text']
+          end
         end
       elsif path.split('.')[-1] == "csv"
         log "Reading CSV corpus from #{path}"
@@ -205,7 +209,11 @@ module Ebooks
         if path.split('.')[-1] == "json"
           log "Reading json corpus from #{path}"
           l = JSON.parse(content).map do |tweet|
-            tweet['text']
+            if tweet.key?('full_text')
+              tweet['full_text']
+            else
+              tweet['text']
+            end
           end
           lines.concat(l)
         elsif path.split('.')[-1] == "csv"
@@ -246,7 +254,7 @@ module Ebooks
     # @param generator [SuffixGenerator, nil]
     # @param retry_limit [Integer] how many times to retry on invalid tweet
     # @return [String]
-    def make_statement(limit=140, generator=nil, retry_limit=10)
+    def make_statement(limit=280, generator=nil, retry_limit=10)
       responding = !generator.nil?
       generator ||= SuffixGenerator.build(@sentences)
 
@@ -316,7 +324,7 @@ module Ebooks
     # @param limit [Integer] characters available for response
     # @param sentences [Array<Array<Integer>>]
     # @return [String]
-    def make_response(input, limit=140, sentences=@mentions)
+    def make_response(input, limit=280, sentences=@mentions)
       # Prefer mentions
       relevant, slightly_relevant = find_relevant(sentences, input)
 
