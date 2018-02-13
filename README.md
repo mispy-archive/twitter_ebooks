@@ -135,7 +135,7 @@ Once you have a model, the primary use is to produce statements and related resp
 
 ``` ruby
 > model = Ebooks::Model.load("model/0xabad1dea.model")
-> model.make_statement(140)
+> model.make_statement(280)
 => "My Terrible Netbook may be the kind of person who buys Starbucks, but this Rackspace vuln is pretty straight up a backdoor"
 > model.make_response("The NSA is coming!", 130)
 => "Hey - someone who claims to be an NSA conspiracy"

@@ -100,7 +100,8 @@ module Ebooks
 
     def initialize
       @tokens = []
-
+      @banned_words_file ||= 'banned_words.txt'
+      @banned_words ||= File.exists?(@banned_words_file) ? File.read(@banned_words_file).split : []
       # Reverse lookup tiki by token, for faster generation
       @tikis = {}
     end
@@ -117,6 +118,20 @@ module Ebooks
         return @tikis[token] = @tokens.length-1
       end
     end
+
+    # Set the banned words list for the model
+    # @param path [String]
+    def set_banned_words(path = 'banned_words.txt')
+      return if @banned_words_file == path
+      @banned_words_file = path
+      if File.exists?(@banned_words_file)
+        @banned_words = File.read(@banned_words_file).split
+        log "Successfully loaded banned words list #{path}"
+      else
+        log "Error: Banned words list #{path} does not exist"
+      end
+    end
+
 
     # Convert a body of text into arrays of tikis
     # @param text [String]
@@ -142,7 +157,11 @@ module Ebooks
       if path.split('.')[-1] == "json"
         log "Reading json corpus from #{path}"
         lines = JSON.parse(content).map do |tweet|
-          tweet['text']
+          if tweet.key?('full_text')
+            tweet['full_text']
+          else
+            tweet['text']
+          end
         end
       elsif path.split('.')[-1] == "csv"
         log "Reading CSV corpus from #{path}"
@@ -205,7 +224,11 @@ module Ebooks
         if path.split('.')[-1] == "json"
           log "Reading json corpus from #{path}"
           l = JSON.parse(content).map do |tweet|
-            tweet['text']
+            if tweet.key?('full_text')
+              tweet['full_text']
+            else
+              tweet['text']
+            end
           end
           lines.concat(l)
         elsif path.split('.')[-1] == "csv"
@@ -238,7 +261,11 @@ module Ebooks
     # @param limit Integer how many chars we have left
     def valid_tweet?(tikis, limit)
       tweet = NLP.reconstruct(tikis, @tokens)
-      tweet.length <= limit && !NLP.unmatched_enclosers?(tweet)
+      found_banned = @banned_words.any? do |word|
+        re = Regexp.new("\\b#{word}\\b", "i")
+        re.match tweet
+      end
+      tweet.length <= limit && !NLP.unmatched_enclosers?(tweet) && !found_banned
     end
 
     # Generate some text
@@ -246,7 +273,7 @@ module Ebooks
     # @param generator [SuffixGenerator, nil]
     # @param retry_limit [Integer] how many times to retry on invalid tweet
     # @return [String]
-    def make_statement(limit=140, generator=nil, retry_limit=10)
+    def make_statement(limit=280, generator=nil, retry_limit=10)
       responding = !generator.nil?
       generator ||= SuffixGenerator.build(@sentences)
 
@@ -274,7 +301,13 @@ module Ebooks
       tweet = NLP.reconstruct(tikis, @tokens)
 
       if retries >= retry_limit
-        log "Unable to produce valid non-verbatim tweet; using \"#{tweet}\""
+        log "Unable to produce valid non-verbatim tweet; result was \"#{tweet}\""
+        if valid_tweet?(tikis, limit)
+          log "Tweet contains no banned words; sending anyways"
+        else
+          log "Tweet contains banned words or is invalid; replacing with dummy message"
+          tweet = "Sorry, try again."
+        end
       end
 
       fix tweet
@@ -316,7 +349,7 @@ module Ebooks
     # @param limit [Integer] characters available for response
     # @param sentences [Array<Array<Integer>>]
     # @return [String]
-    def make_response(input, limit=140, sentences=@mentions)
+    def make_response(input, limit=280, sentences=@mentions)
       # Prefer mentions
       relevant, slightly_relevant = find_relevant(sentences, input)
 

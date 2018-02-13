@@ -82,7 +82,8 @@ module Ebooks
       opts = {
         count: 200,
         #include_rts: false,
-        trim_user: true
+        trim_user: true,
+        tweet_mode: 'extended'
       }
 
       opts[:since_id] = @tweets[0][:id] unless @tweets.nil?

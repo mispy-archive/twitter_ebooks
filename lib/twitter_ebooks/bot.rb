@@ -95,7 +95,7 @@ module Ebooks
       @reply_mentions = ([ev.user.screen_name] + reply_mentions).uniq
 
       @reply_prefix = @reply_mentions.map { |m| '@'+m }.join(' ') + ' '
-      @limit = 140 - @reply_prefix.length
+      @limit = 280 - @reply_prefix.length
 
       mless = ev.text
       begin
