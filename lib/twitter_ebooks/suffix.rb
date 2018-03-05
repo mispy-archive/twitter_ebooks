@@ -22,9 +22,9 @@ module Ebooks
       @bigrams = {}
 
       @sentences.each_with_index do |tikis, i|
-        if (i % 10000 == 0) then
-          log ("Building: sentence #{i} of #{sentences.length}")
-        end
+#        if (i % 10000 == 0) then
+#          log ("Building: sentence #{i} of #{sentences.length}")
+#        end
         last_tiki = INTERIM
         tikis.each_with_index do |tiki, j|
           @unigrams[last_tiki] ||= []
