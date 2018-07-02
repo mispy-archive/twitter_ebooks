@@ -89,6 +89,7 @@ module Ebooks
 
       loop do
         opts[:max_id] = max_id unless max_id.nil?
+        opts[:tweet_mode] = "extended"
         begin
           new = @client.user_timeline(@username, opts)
         rescue Twitter::Error::TooManyRequests
