@@ -173,7 +173,9 @@ module Ebooks
 
     # Logs info to stdout in the context of this bot
     def log(*args)
-      STDOUT.print "@#{@username}: " + args.map(&:to_s).join(' ') + "\n"
+      args.unshift "@#{@username}:"
+      args.unshift Time.now.strftime("%c -")
+      STDOUT.print args.map(&:to_s).join(' ') + "\n"
       STDOUT.flush
     end
 

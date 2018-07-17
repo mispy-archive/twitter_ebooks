@@ -1,6 +1,7 @@
 $debug = false
 
 def log(*args)
+  args.unshift Time.now.strftime("%c:")
   STDERR.print args.map(&:to_s).join(' ') + "\n"
   STDERR.flush
 end
