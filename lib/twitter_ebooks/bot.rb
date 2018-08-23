@@ -430,6 +430,7 @@ module Ebooks
         log "Already favorited: #{tweet.user.screen_name}: #{tweet.text}"
       end
     end
+    alias_method :favourite, :favorite
 
     # Retweet a tweet
     # @param tweet [Twitter::Tweet]
