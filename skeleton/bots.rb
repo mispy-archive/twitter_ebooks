@@ -29,6 +29,7 @@ class MyBot < Ebooks::Bot
 
   def on_message(dm)
     # Reply to a DM
+    # Make sure to set your API permissions to "Read, Write and Access direct messages" or this won't work!
     # reply(dm, "secret secrets")
   end
 
